@@ -1,0 +1,150 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>packages.glycan_conformer &#8212; GlyCONFORMER 0.1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css" />
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="packages.process_files" href="packages.process_files.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="module-packages.glycan_conformer">
+<span id="packages-glycan-conformer"></span><h1>packages.glycan_conformer<a class="headerlink" href="#module-packages.glycan_conformer" title="Permalink to this headline">¶</a></h1>
+<p>This module contains functions to generate N-glycan
+conformer strings from a COLVAR file containing
+torsion angle values recorded over a MD simulation.</p>
+<p>List of functions:
+create_binary
+find_min_max
+label_min
+load_dict
+perform_block_averages
+plot_distribution
+safe_dict</p>
+<p class="rubric">Functions</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">create_binary</span></code>(maxima_dict, label_dict, …)</p></td>
+<td><p>Converts torsion angle values read from COVLAR file into IUPAC letters.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">find_min_max</span></code>(input_dir, features, order_max, …)</p></td>
+<td><p>Finds minima and maxima of a 1D array read from file.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">label_min</span></code>(cd, features, f_omega)</p></td>
+<td><p>Function that labels minima by their corresponding IUPAC name.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_dict</span></code>(filename)</p></td>
+<td><p>Function loading a dictionary from file.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">perform_block_averages</span></code>(c, ccf, store_dir)</p></td>
+<td><p>Calculates probability of conformers for 10 separate blocks.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_distribution</span></code>(input_dir, limit, …)</p></td>
+<td><p>Plots a bar graph of the conformer density function.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">safe_dict</span></code>(dict_name, filename)</p></td>
+<td><p>Function saving a dictionary to file.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">GlyCONFORMER</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="packages.html">packages</a></li>
+<li class="toctree-l1"><a class="reference internal" href="packages.plot.html">packages.plot</a></li>
+<li class="toctree-l1"><a class="reference internal" href="packages.process_files.html">packages.process_files</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">packages.glycan_conformer</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="packages.process_files.html" title="previous chapter">packages.process_files</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2022, Grothaus.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/_autosummary/packages.glycan_conformer.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
