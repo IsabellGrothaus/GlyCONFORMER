@@ -11,7 +11,7 @@ classifiers = [
 setup(name='GlyCONFORMER',
       version='0.1',
       description="GlyCONFORMERS is a Python package that assigns conformer strings to N-glycan conformers, based on their torsion angle values.",
-      long_description = (here / "README.md").read_text(encoding="utf-8"),
+      long_description = (here / "README.rst").read_text(encoding="utf-8"),
       author='Isabell Grothaus',
       author_email='grothaus@uni-bremen.de',
       classifiers=classifiers,
