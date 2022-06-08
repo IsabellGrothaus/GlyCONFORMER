@@ -14,11 +14,10 @@ setup(name='GlyCONFORMER',
       long_description = (here / "README.md").read_text(encoding="utf-8"),
       author='Isabell Grothaus',
       author_email='grothaus@uni-bremen.de',
-      classifiers=classifiers
-      #keywords="glycan, conformer, classification, sugar, carbohydrates "
+      classifiers=classifiers,
+      keywords="glycan, conformer, classification, sugar, carbohydrates",
       license='GPL-3.0 license',
       packages=find_packages(),
-      zip_safe=False,
       install_requires=[
           "numpy","matplotlib","pandas","plumed","scipy","json","panedr","os","glob","sys",
           ],
