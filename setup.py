@@ -10,7 +10,7 @@ setup(name='GlyCONFORMER',
       packages=['packages'],
       zip_safe=False,
       install_requires=[
-          "numpy","matplotlib","pandas","plumed","scipy","json","panedr","os","glob","sys"
+          "numpy","matplotlib","pandas","plumed","scipy","json","panedr","os","glob"
           # 'Sphinx',
           # ^^^ Not sure if this is needed on readthedocs.org
           # 'something else?',
