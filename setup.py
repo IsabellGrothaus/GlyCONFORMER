@@ -18,7 +18,6 @@ setup(name='GlyCONFORMER',
       keywords="glycan, conformer, classification, sugar, carbohydrates",
       license='GPL-3.0 license',
       packages=find_packages(),
-      python_requires=">3.8",
       install_requires=[
           "numpy","matplotlib","pandas","plumed","scipy",#"json","panedr","os","glob","sys",
           ],
