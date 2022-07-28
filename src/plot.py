@@ -3,7 +3,7 @@ import glob
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import packages.process_files
+import src.process_files
 
 def roundtriptime(replica, path):
     """

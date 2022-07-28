@@ -91,19 +91,27 @@ def _include_branch_conformer_string(namelist, branches, features):
     """
     
     for i in range(1,len(namelist)):
+        
         for j,k in zip(range(0,len(features)*3,3),range(3,len(features)*3+1,3)):
             if namelist[i][j:k] == namelist[0][j:k]:
                 newname = namelist[i][:j] + " • " + namelist[i][k:]
                 namelist[i] = newname
             else: 
-                pass
-        
-        #might require an if statement in the case of complex glycans if you have 2 times a 4 and 2 branch
+                pass 
+        # Limitation: Can only replace branch separators which do occur max. twice
         for b in branches:
             index = namelist[0].find(b)
-            newbranch = namelist[i][:index] + b + namelist[i][index+3:]
+            newbranch = namelist[i][:index] + "───" + namelist[i][index+3:]
             namelist[i] = newbranch
-            
+        
+        for b in branches:
+            rindex = namelist[0].rfind(b)
+            if rindex == "-1":
+                pass
+            else:
+                rnewbranch = namelist[i][:rindex] + "───" + namelist[i][rindex+3:]
+                namelist[i] = rnewbranch
+
     return namelist
 
 def safe_dict(dict_name, filename):   
@@ -361,10 +369,10 @@ def label_min(cd, features, f_omega):
     return label_dict
 
 def create_binary(maxima_dict, label_dict, colvar_dir, input_dir, 
-                  colvar_length, features, loc1, loc2, loc3 = None, 
-                  loc4 = None, loc5 = None, loc6 = None, locF = None, 
-                  locG = None, bra3 = None, bra4 = None, bra5 = None, 
-                  bra6 = None):
+                  colvar_length, features,* , loc1, loc2, loc3 = 0, 
+                  loc4 = 0, loc5 = 0, loc6 = 0, locF = 0, 
+                  locG = 0, bra3 = "───", bra4 = "───", bra5 = "───", 
+                  bra6 = "───"):
     """
     Converts torsion angle values read from COVLAR file into IUPAC letters.
     
@@ -405,7 +413,7 @@ def create_binary(maxima_dict, label_dict, colvar_dir, input_dir,
     branches : str
         List of branches present in the processed glycan structure
     """
-    
+   
     colvar = plumed.read_as_pandas(colvar_dir)
     colvar = colvar[features]
     colvar = colvar.iloc[::round(colvar.shape[0]/colvar_length), :]
@@ -444,46 +452,46 @@ def create_binary(maxima_dict, label_dict, colvar_dir, input_dir,
     c.insert(loc=loc2+1, column='sep2', value="3──")
     branches.append("3──")
     
-    if loc3 == None:
+    if loc3 == 0:
         pass
     else:
         c.insert(loc=loc3, column='sep3', value=bra3)
         branches.append(bra3)
     
-    if loc4 == None:
+    if loc4 == 0:
         pass
     else:
-        if loc3 != None:
+        if loc3 != 0:
             c.insert(loc=loc4, column='sep4', value=bra4)
             branches.append(bra4)
         else:
             raise ValueError("loc3 need to be defined before loc4")
             
-    if loc5 == None:
+    if loc5 == 0:
         pass
     else:
-        if loc4 != None:
+        if loc4 != 0:
             c.insert(loc=loc5, column='sep5', value=bra5)
             branches.append(bra5)
         else:
             raise ValueError("loc4 need to be defined before loc5")
     
-    if loc6 == None:
+    if loc6 == 0:
         pass
     else:
-        if loc6 != None:
+        if loc6 != 0:
             c.insert(loc=loc6, column='sep6', value=bra6)
             branches.append(bra6)
         else:
             raise ValueError("loc5 need to be defined before loc6")
     
-    if locF == None:
+    if locF == 0:
         pass
     else:
         c.insert(loc=locF, column='sepF', value="f──")
         branches.append("f──")
         
-    if locG == None:
+    if locG == 0:
         pass
     else:
         c.insert(loc=locG, column='sepG', value="g──")
@@ -587,7 +595,7 @@ def plot_distribution(input_dir, limit, branches, features):
     hist = pd.read_csv("{}/Cluster_conformer1.dat".format(input_dir), names = ["Index", "Conformer", "Count_partial", "Prob", "Count_full"], sep = " ", dtype = str)
     hist = hist.filter(indexlist, axis = 0)
     namelist = hist['Conformer'].tolist()
-    name_list = _include_branch_conformer_string(namelist, branches, features) 
+    name_list = _include_branch_conformer_string(namelist, branches, features)
     name_list = _vertical_conformer_string(namelist)
     average2 = average2.to_frame()
     average2.columns = ["Error"]
