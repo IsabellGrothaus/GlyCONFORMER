@@ -4,6 +4,7 @@ conformer strings from a COLVAR file containing
 torsion angle values recorded over a MD simulation.
 
 List of functions:
+conformer_limit_string
 create_binary
 find_min_max
 label_min
@@ -620,3 +621,58 @@ def plot_distribution(input_dir, limit, branches, features):
     plt.xlabel("Conformer")
     plt.ylabel('Probability [%]')
     plt.savefig("{}/Conformer_population_full.png".format(input_dir))
+
+    
+def conformer_limit_string(limit, directory):
+    
+    """
+    Prints out the conform strings which are occuring more or less than the limit.
+    
+    Reads in constructed conformer probability records (Cluster_conformer*d.dat files) 
+    from 10 blocks and averages them to sort conformers by their occurance. The limit 
+    sets which conformers are discarded (below) and which are included for analysis (above).
+    
+    Parameters
+    ----------
+    limit: float
+        Propability limit up to which conformers are excluded from coloured representation in DimRed
+    directory: str
+        Name of directory path from which to read the Cluster_conformer.dat files
+        
+    Returns
+    -------
+    targets_below: str
+        List of conformer strings below the limit
+    targets_above: str
+        List of conformer strings above the limit
+    """
+
+    # Load partially data sorted 
+    hist1 = pd.read_csv("{}/Cluster_conformer1.dat".format(directory), delim_whitespace=True, names = ["Index","Conformer","Count", "Prob", "Count_all"])
+    N, average = 1, hist1.iloc[:,3]
+    for i in range(2,11): 
+        histn = pd.read_csv("{}/Cluster_conformer{}.dat".format(directory, i), delim_whitespace=True, names = ["Index","Conformer","Count", "Prob", "Count_all"])
+        N, average = N + 1, average + histn.iloc[:,3]
+
+    # Sort conformers by probability
+    average = average.to_frame()
+    average = average.div(N)
+     
+    # below
+    below = average.drop(average[average['Prob'] > limit ].index, inplace=False)
+    below = below.sort_values(by='Prob',ascending=False)
+    indexlist = below.index.tolist()
+    hist = pd.read_csv("{}/Cluster_conformer1.dat".format(directory), sep = " ", names = ["Index","Conformer","Count", "Prob", "Count_all"], dtype = str)
+    hist = hist.filter(indexlist, axis = 0)
+    targets_below = hist['Conformer'].tolist()
+
+    # above
+    above = average.drop(average[average['Prob'] < limit ].index, inplace=False)
+    above = above.sort_values(by='Prob',ascending=False)
+    indexlist = above.index.tolist()
+    # Safe to use no.1 or any other of these files. All have all conformers included
+    hist = pd.read_csv("{}/Cluster_conformer1.dat".format(directory), sep = " ", names = ["Index","Conformer","Count", "Prob", "Count_all"], dtype = str)
+    hist = hist.filter(indexlist, axis = 0)
+    targets_above = hist['Conformer'].tolist()
+
+    return targets_below,targets_above

@@ -3,7 +3,7 @@ import glob
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import src.process_files
+from src import process_files
 
 def roundtriptime(replica, path):
     """
@@ -51,7 +51,7 @@ def free_energy(path):
     
     for filen in glob.glob(path):
 
-        temp_dirList = packages.process_files._read_in_folder(filen,'')
+        temp_dirList = process_files._read_in_folder(filen,'')
         dirList = []
         for folder in temp_dirList:
             dirList.append(filen+folder)
