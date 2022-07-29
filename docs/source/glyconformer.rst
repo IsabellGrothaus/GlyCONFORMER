@@ -1,29 +1,29 @@
-src package
+glyconformer package
 ===========
 
 Submodules
 ----------
 
-src.glycan\_conformer module
+glyconformer.glycan\_conformer module
 ----------------------------
 
-.. automodule:: src.glycan_conformer
+.. automodule:: glyconformer.glycan_conformer
    :members:
    :undoc-members:
    :show-inheritance:
 
-src.plot module
+glyconformer.plot module
 ---------------
 
-.. automodule:: src.plot
+.. automodule:: glyconformer.plot
    :members:
    :undoc-members:
    :show-inheritance:
 
-src.process\_files module
+glyconformer.process\_files module
 -------------------------
 
-.. automodule:: src.process_files
+.. automodule:: glyconformer.process_files
    :members:
    :undoc-members:
    :show-inheritance:
@@ -31,7 +31,7 @@ src.process\_files module
 Module contents
 ---------------
 
-.. automodule:: src
+.. automodule:: glyconformer
    :members:
    :undoc-members:
    :show-inheritance:
