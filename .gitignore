@@ -3,3 +3,5 @@ __pycache__/*
 REST_analysis.dat
 docs/build
 Example_dataset
+GlyCONFORMER.egg-info
+DimRed

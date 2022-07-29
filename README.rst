@@ -8,7 +8,7 @@ Info
 
 Documentation
 #############
-See documentation [here](https://glyconformer.readthedocs.io/en/latest/index.html)
+See documentation https://glyconformer.readthedocs.io/en/latest/index.html
 
 
 Usage
