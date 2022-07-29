@@ -33,9 +33,7 @@ extensions = [
 'sphinx.ext.duration',
 'sphinx.ext.doctest',
 'sphinx.ext.autodoc',
-'sphinx.ext.autosummary',
-'nbsphinx'
-]
+'sphinx.ext.autosummary']
 
 autosummary_generate = True
 
