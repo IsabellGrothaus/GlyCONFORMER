@@ -6,10 +6,15 @@ Info
 
 **GlyCONFORMERS** is a Python package that assigns conformer strings to N-glycan conformers, based on their torsion angle values.
 
+Documentation
+#############
+See documentation [here](https://glyconformer.readthedocs.io/en/latest/index.html)
+
+
 Usage
 ######
 
-Examples and how-to-use are given in main-analysis.ipynb jupyter-notebook.
+An example_dataset is given, which can be analysed with the main-analysis.ipynb and DimRed jupyter-notebooks.
 
 Installation
 ##############
