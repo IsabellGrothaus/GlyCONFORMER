@@ -555,7 +555,7 @@ def perform_block_averages(c, ccf, store_dir):
         # Print partially data sorted to file
         ccc_short.to_csv("{}/Cluster_conformer{}.dat".format(store_dir,i), sep= " ", header=False)
 
-def plot_distribution(input_dir, limit, branches, features):
+def plot_distribution(input_dir, limit, branches, features, ymax=100):
     """
     Plots a bar graph of the conformer density function.
     
@@ -575,6 +575,8 @@ def plot_distribution(input_dir, limit, branches, features):
         List of branches present in the glycan
     features: str
         Updated features list
+    ymax: float
+        Maximum height of the y-axis (up to 100, as we plot probabilites), default is 100%
         
     Returns
     -------
@@ -616,7 +618,7 @@ def plot_distribution(input_dir, limit, branches, features):
     bar = plt.bar(pos_list, average.Prob * 100, color = "blue", linewidth = "1", yerr = error * 100)
     for i in range(len(pos_list)):
         bar[i].set_color(colors[i])
-    
+    plt.ylim(0,ymax)
     plt.xlabel("Conformer")
     plt.ylabel('Probability [%]')
     plt.savefig("{}/Conformer_population_full.png".format(input_dir))
