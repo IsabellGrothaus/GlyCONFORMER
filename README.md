@@ -1,6 +1,8 @@
 # GlyCONFORMER
 
-**GlyCONFORMERS** is a Python package that assigns labels to glycan conformers, based on their torsion angle values, in order to differentiate various 3D-structures of one single glycan. It enables the automated assignment of the conformer string that was introduced in **Grothaus et al. 2022, Exploration, Representation, and Rationalization of the Conformational Phase Space of N-Glycans, J. Chem. Inf. Model. 2022, 62, 20, 4992–5008** https://pubs.acs.org/doi/full/10.1021/acs.jcim.2c01049 for N-glycans. 
+**GlyCONFORMERS** is a Python package that assigns labels to glycan conformers, based on their torsion angle values, in order to differentiate various 3D-structures of one single glycan. It enables the automated assignment of the conformer string that was introduced in:
+
+ **Grothaus et al. 2022, Exploration, Representation, and Rationalization of the Conformational Phase Space of N-Glycans, J. Chem. Inf. Model. 2022, 62, 20, 4992–5008** https://pubs.acs.org/doi/full/10.1021/acs.jcim.2c01049 for N-glycans. 
 
 <img src="Conformer_string.png" width="500">
 
@@ -14,41 +16,21 @@ See documentation https://glyconformer.readthedocs.io/en/latest/index.html
 
 To use GlyCONFORMER, first install it using pip:
 
-.. code-block:: console
-
     $ pip install GlyCONFORMER
     
 ## Tutorial
 
-The tutorial Jupyter Notebook should be run from within the GlyCONFORMER package folder.???
+The tutorial Jupyter Notebook should be run from within the GlyCONFORMER package folder or you have to change the path directing to the TUTORIAL folder.
 
+The Tutorial includes different N-glycan types and different complexity levels of how to obtain a GlyCONFORMER label string for custom glycan types and their recorded torsion angle values. The minimum example is given by the high-mannose type N-glycan M5, where only a file with torsion angle values is used as input (**M5_angles.dat**) and the remaining necessary information read from the LIBRARY_GLYCANS folder by specifying the **glycantype = "M5**". 
+```
+conformer = glyconformer(inputfile = "TUTORIAL/M5_example/M5_angles.dat", 
+    			 glycantype = "M5", 
+    			 outputdir = "TUTORIAL/M5_example")
+binary, population = conformer.run()
+conformer.plot()
+```
+The assignment of conformer strings also allows for plotting their distribution, where conformer labels are given on the x-axis and deviations from the most populated conformer indicated by explicit letters, where dots are used when no change in that torsion angle could be detected. 
 
+<img src="TUTORIAL/M5_example/Conformer_distribution.png" width="500">
 
- 
- 
-GlyCONFORMERS
-=============
-
-Info
-#####
-
-**GlyCONFORMERS** is a Python package that assigns conformer strings to N-glycan conformers, based on their torsion angle values.
-
-Documentation
-#############
-See documentation https://glyconformer.readthedocs.io/en/latest/index.html
-
-
-Usage
-######
-
-An example_dataset is given, which can be analysed with the main-analysis.ipynb and DimRed jupyter-notebooks.
-
-Installation
-##############
-
-To use GlyCONFORMER, first install it using pip:
-
-.. code-block:: console
-
-    $ pip install GlyCONFORMER
