@@ -66,7 +66,7 @@ class glyconformer:
             self.fepdir = fepdir
             self.order_max = order_max
             self.order_min = order_min
-            self.maxima,self.minima = self.find_min_max(self.fepdir, self.angles, self.order_max, self.order_min)    
+            self.maxima,self.minima = self._find_min_max(self.fepdir, self.angles, self.order_max, self.order_min)    
         else:
             self.glycantype = glycantype
             self.angles = self._readfeature("LIBRARY_GLYCANS.{}".format(self.glycantype),"angles.dat")
@@ -76,7 +76,7 @@ class glyconformer:
             self.minima = self._readdict("LIBRARY_GLYCANS.{}".format(self.glycantype),"minima.dat")
             self.maxima = self._readdict("LIBRARY_GLYCANS.{}".format(self.glycantype),"maxima.dat")
             
-        self.label = self.label_min(self.minima, self.angles, self.omega_angles)
+        self.label = self._label_min(self.minima, self.angles, self.omega_angles)
         
         #read inputfile
         
@@ -171,7 +171,7 @@ class glyconformer:
                 sep.append(str(row[1]))
         return index, sep
     
-    def find_min_max(self, fepdir, features, order_max, order_min):
+    def _find_min_max(self, fepdir, features, order_max, order_min):
         """ 
         Finds minima and maxima of a 1D array read from file.
 
@@ -277,7 +277,7 @@ class glyconformer:
 
         return maxima_dict, minima_dict
 
-    def label_min(self, minima, angles, omega_angles):
+    def _label_min(self, minima, angles, omega_angles):
         """
         Function that labels minima by their corresponding IUPAC name.
 
@@ -384,66 +384,6 @@ class glyconformer:
         label_dict = self._combine_dict(name_dict,name_dict1,name_dict2,name_dict3)
         return label_dict
     
-    def validate_fep(self):
-
-        """
-        Function that plots free energy profiles with annotated minima and maxima.
-
-        Evaluation of how good the identification of minima and maxima worked.
-        -------
-        """
-
-        y0 = 0
-        y1 = 40
-        C = np.arange(-0.5236, 0 + 0.001, 0.001)
-        c = np.arange(0, 0.5236 + 0.001, 0.001)
-        g = np.arange(0.5236, 1.5708 + 0.001, 0.001)
-        a = np.arange(1.5708, 2.6180 + 0.001, 0.001)
-        T = np.arange(2.6180, 3.5 + 0.001, 0.001)
-        t = np.arange(-3.5, -2.6180 + 0.001, 0.001)
-        A = np.arange(-2.6180, -1.5708 + 0.001, 0.001)
-        G = np.arange(-1.5708, -0.5236 + 0.001, 0.001)
-
-        co = "darkslategrey"
-
-        fig, axs = plt.subplots(len(self.angles), figsize = (6,60), constrained_layout=True, )
-
-        for i, f in zip(range(len(self.angles)),self.angles):
-            profile = pd.read_csv("{}/fes_{}.dat".format(self.fepdir, f), delim_whitespace=True, names = ["x","y"])
-            axs[i].set_title('{}'.format(f),fontsize = 15)
-            axs[i].set_xlabel("Torsion angle [rad]", fontsize = 12)
-            axs[i].set_ylabel("Free energy [kJ/mol]", fontsize = 12)
-            axs[i].plot(profile.loc[:,"x"], profile.loc[:,"y"], c = "black", linewidth=2)
-            axs[i].fill_between(C, y0, y1, alpha = 0.6, color = "paleturquoise", edgecolor = "none")
-            axs[i].fill_between(c, y0, y1, alpha = 0.6, color = "paleturquoise", edgecolor = "none")
-            axs[i].fill_between(a, y0, y1, alpha = 0.6, color = "darkturquoise", edgecolor = "none")
-            axs[i].fill_between(g, y0, y1, alpha = 0.6, color = "aqua", edgecolor = "none")
-            axs[i].fill_between(T, y0, y1, alpha = 0.6, color = "teal", edgecolor = "none")
-            axs[i].fill_between(t, y0, y1, alpha = 0.6, color = "teal", edgecolor = "none")
-            axs[i].fill_between(G, y0, y1, alpha = 0.6, color = "aqua", edgecolor = "none")
-            axs[i].fill_between(A, y0, y1, alpha = 0.6, color = "darkturquoise", edgecolor = "none")
-            if len(self.maxima["{}".format(f)]) == 1:
-                axs[i].axvline(self.maxima["{}".format(f)][0], c = co, linestyle = "--")
-                axs[i].text(self.minima["{}".format(f)][0],30, self.label["{}".format(f)][0], fontsize = 12, c = co, weight='bold')
-            elif len(self.maxima["{}".format(f)]) == 2:
-                axs[i].axvline(self.maxima["{}".format(f)][0], c = co, linestyle = "--")
-                axs[i].axvline(self.maxima["{}".format(f)][1], c = co, linestyle = "--")
-                axs[i].text(self.minima["{}".format(f)][0],30, self.label["{}".format(f)][0], fontsize = 12, c = co, weight='bold')
-                axs[i].text(self.minima["{}".format(f)][1],30, self.label["{}".format(f)][1], fontsize = 12, c = co, weight='bold')
-                axs[i].text(self.minima["{}".format(f)][2],30, self.label["{}".format(f)][2], fontsize = 12, c = co, weight='bold')
-
-            elif len(self.maxima["{}".format(f)]) == 3:
-                axs[i].axvline(self.maxima["{}".format(f)][0], c = co, linestyle = "--")
-                axs[i].axvline(self.maxima["{}".format(f)][1], c = co, linestyle = "--")
-                axs[i].axvline(self.maxima["{}".format(f)][2], c = co, linestyle = "--")
-                axs[i].text(self.minima["{}".format(f)][0],30, self.label["{}".format(f)][0], fontsize = 12, c = co, weight='bold')
-                axs[i].text(self.minima["{}".format(f)][1],30, self.label["{}".format(f)][1], fontsize = 12, c = co, weight='bold')
-                axs[i].text(self.minima["{}".format(f)][2],30, self.label["{}".format(f)][2], fontsize = 12, c = co, weight='bold')
-                axs[i].text(self.minima["{}".format(f)][3],30, self.label["{}".format(f)][3], fontsize = 12, c = co, weight='bold')
-
-        plt.show()
-    
-    
     def run(self):
         """
         Function that converts the torsion angle values into corresponding letters, counts the occurance of individual conformer strings and assesses statistics by performing block averages.
@@ -460,8 +400,8 @@ class glyconformer:
             counting how often a conformer string occured
         """
 
-        binary, population, self.angles_separators, self.branches = self.create_binary(self.maxima, self.label, self.angles, self.separator_index, self.separator)
-        self.perform_block_averages(binary, population, self.outputdir)
+        binary, population, self.angles_separators, self.branches = self._create_binary(self.maxima, self.label, self.angles, self.separator_index, self.separator)
+        self._perform_block_averages(binary, population, self.outputdir)
         
         return binary, population
         
@@ -486,7 +426,7 @@ class glyconformer:
             for k in set(d1.keys()) | set(d2.keys()) | set(d3.keys()) | set(d4.keys())
         }
 
-    def create_binary(self, maxima, label, angles, separator_index, separator):
+    def _create_binary(self, maxima, label, angles, separator_index, separator):
         """
         Converts torsion angle values read from input file into IUPAC letters.
 
@@ -640,7 +580,7 @@ class glyconformer:
 
         return c, ccf, angles, branches
     
-    def perform_block_averages(self, c, ccf, outputdir):
+    def _perform_block_averages(self, c, ccf, outputdir):
         """
         Calculates probability of conformers for 10 separate blocks.
 
@@ -844,6 +784,64 @@ class glyconformer:
 
         return namelist
 
+    def validate_fep(self):
+
+        """
+        Function that plots free energy profiles with annotated minima and maxima.
+
+        Evaluation of how good the identification of minima and maxima worked.
+        -------
+        """
+
+        y0 = 0
+        y1 = 40
+        C = np.arange(-0.5236, 0 + 0.001, 0.001)
+        c = np.arange(0, 0.5236 + 0.001, 0.001)
+        g = np.arange(0.5236, 1.5708 + 0.001, 0.001)
+        a = np.arange(1.5708, 2.6180 + 0.001, 0.001)
+        T = np.arange(2.6180, 3.5 + 0.001, 0.001)
+        t = np.arange(-3.5, -2.6180 + 0.001, 0.001)
+        A = np.arange(-2.6180, -1.5708 + 0.001, 0.001)
+        G = np.arange(-1.5708, -0.5236 + 0.001, 0.001)
+
+        co = "darkslategrey"
+
+        fig, axs = plt.subplots(len(self.angles), figsize = (6,60), constrained_layout=True, )
+
+        for i, f in zip(range(len(self.angles)),self.angles):
+            profile = pd.read_csv("{}/fes_{}.dat".format(self.fepdir, f), delim_whitespace=True, names = ["x","y"])
+            axs[i].set_title('{}'.format(f),fontsize = 15)
+            axs[i].set_xlabel("Torsion angle [rad]", fontsize = 12)
+            axs[i].set_ylabel("Free energy [kJ/mol]", fontsize = 12)
+            axs[i].plot(profile.loc[:,"x"], profile.loc[:,"y"], c = "black", linewidth=2)
+            axs[i].fill_between(C, y0, y1, alpha = 0.6, color = "paleturquoise", edgecolor = "none")
+            axs[i].fill_between(c, y0, y1, alpha = 0.6, color = "paleturquoise", edgecolor = "none")
+            axs[i].fill_between(a, y0, y1, alpha = 0.6, color = "darkturquoise", edgecolor = "none")
+            axs[i].fill_between(g, y0, y1, alpha = 0.6, color = "aqua", edgecolor = "none")
+            axs[i].fill_between(T, y0, y1, alpha = 0.6, color = "teal", edgecolor = "none")
+            axs[i].fill_between(t, y0, y1, alpha = 0.6, color = "teal", edgecolor = "none")
+            axs[i].fill_between(G, y0, y1, alpha = 0.6, color = "aqua", edgecolor = "none")
+            axs[i].fill_between(A, y0, y1, alpha = 0.6, color = "darkturquoise", edgecolor = "none")
+            if len(self.maxima["{}".format(f)]) == 1:
+                axs[i].axvline(self.maxima["{}".format(f)][0], c = co, linestyle = "--")
+                axs[i].text(self.minima["{}".format(f)][0],30, self.label["{}".format(f)][0], fontsize = 12, c = co, weight='bold')
+            elif len(self.maxima["{}".format(f)]) == 2:
+                axs[i].axvline(self.maxima["{}".format(f)][0], c = co, linestyle = "--")
+                axs[i].axvline(self.maxima["{}".format(f)][1], c = co, linestyle = "--")
+                axs[i].text(self.minima["{}".format(f)][0],30, self.label["{}".format(f)][0], fontsize = 12, c = co, weight='bold')
+                axs[i].text(self.minima["{}".format(f)][1],30, self.label["{}".format(f)][1], fontsize = 12, c = co, weight='bold')
+                axs[i].text(self.minima["{}".format(f)][2],30, self.label["{}".format(f)][2], fontsize = 12, c = co, weight='bold')
+
+            elif len(self.maxima["{}".format(f)]) == 3:
+                axs[i].axvline(self.maxima["{}".format(f)][0], c = co, linestyle = "--")
+                axs[i].axvline(self.maxima["{}".format(f)][1], c = co, linestyle = "--")
+                axs[i].axvline(self.maxima["{}".format(f)][2], c = co, linestyle = "--")
+                axs[i].text(self.minima["{}".format(f)][0],30, self.label["{}".format(f)][0], fontsize = 12, c = co, weight='bold')
+                axs[i].text(self.minima["{}".format(f)][1],30, self.label["{}".format(f)][1], fontsize = 12, c = co, weight='bold')
+                axs[i].text(self.minima["{}".format(f)][2],30, self.label["{}".format(f)][2], fontsize = 12, c = co, weight='bold')
+                axs[i].text(self.minima["{}".format(f)][3],30, self.label["{}".format(f)][3], fontsize = 12, c = co, weight='bold')
+
+        plt.show()
 
 
 

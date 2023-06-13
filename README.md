@@ -8,10 +8,6 @@
 
 Check the paper or tutorial for a detailed explanation of the GlyCONFORMER string generation. The workflow is not exclusivly designed for N-glycans, but can also be applyied to any other glycan type there is. 
 
-## Documentation
-
-See documentation https://glyconformer.readthedocs.io/en/latest/index.html
-
 ## Installation
 
 To use GlyCONFORMER, first install it using pip:
@@ -59,3 +55,6 @@ Conformer labels are given on the x-axis and deviations from the most populated 
 
 For more elaborate examples and a detailed explanation of how free energy profiles of each torsion angle are classified, check out the **Tutorial_GlyCONFORMER.ipynb** notebook. 
 
+## Documentation
+
+See documentation https://glyconformer.readthedocs.io/en/latest/index.html
