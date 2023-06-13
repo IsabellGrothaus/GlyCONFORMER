@@ -21,6 +21,6 @@ setup(name='GlyCONFORMER',
       license='GPL-3.0 license',
       packages=find_packages(),
       install_requires=[
-                       "numpy","matplotlib","pandas","py-plumed","scipy"
+                       "numpy","matplotlib","pandas","plumed","scipy"
                        ],
       )
