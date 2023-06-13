@@ -1,8 +1,6 @@
 __pycache__/*
 .ipynb_checkpoints
-REST_analysis.dat
 docs/build
-Example_dataset
 GlyCONFORMER.egg-info
-DimRed
 dist
+glyconformer/.nfs0000000001d69795000003a5

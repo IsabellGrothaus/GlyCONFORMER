@@ -1,0 +1,37 @@
+<COMPOSITION>
+GlcNac(4),Man(3),Gal(2)
+</COMPOSITION>
+
+<GRS>
+1 BGLCNA
+2 14B: BGLCNA
+3 14B: BMAN
+4 16A: AMAN
+5 12B: BGLCNA
+6 14B: BGAL
+7 13A: AMAN
+8 12B: BGLCNA
+9 14B: BGAL
+</GRS>
+
+<ANGLES>
+phi1_2,psi1_2,phi2_3,psi2_3,phi3_4,psi3_4,omega3_4,phi4_5,psi4_5,phi5_6,psi5_6,phi3_7,psi3_7,phi7_8,psi7_8,phi8_9,psi8_9
+</ANGLES>
+
+<OMEGAANGLES>
+omega3_4
+</OMEGAANGLES>
+
+<STRUCTURE>     
+      6   9 
+      |   |   b 1-4/1-4
+      5   8     
+      |   |   b 1-2/1-2     
+      4   7
+       \ /   a 1-6/1-3
+        3
+        |  b 1-4
+        2
+        |  b 1-4
+        1
+</STRUCTURE> 

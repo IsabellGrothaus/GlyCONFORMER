@@ -1,37 +1,10 @@
 glyconformer package
 ===========
 
-Submodules
-----------
-
-glyconformer.glycan\_conformer module
+glyconformer.lib
 ----------------------------
 
-.. automodule:: glyconformer.glycan_conformer
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-glyconformer.plot module
----------------
-
-.. automodule:: glyconformer.plot
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-glyconformer.process\_files module
--------------------------
-
-.. automodule:: glyconformer.process_files
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: glyconformer
+.. automodule:: glyconformer.lib
    :members:
    :undoc-members:
    :show-inheritance:
