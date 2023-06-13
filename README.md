@@ -20,7 +20,7 @@ To use GlyCONFORMER, first install it using pip:
     
 ## Tutorial
 
-The tutorial Jupyter Notebook should be run from within the GlyCONFORMER package folder or you have to change the path directing to the TUTORIAL folder.
+The tutorial juypter notebook should be run from within the GlyCONFORMER package folder or you have to change the path directing to the TUTORIAL folder.
 
 The tutorial includes different N-glycan types and different complexity levels of how to obtain a GlyCONFORMER label string for custom glycan types and their recorded torsion angle values. The minimum example is given by the high-mannose type N-glycan M5, where only the file **M5_angles.dat** with torsion angle values is used as input:
 
