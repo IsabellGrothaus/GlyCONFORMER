@@ -1,4 +1,4 @@
-src
+glyconformer
 ===
 
 .. toctree::
