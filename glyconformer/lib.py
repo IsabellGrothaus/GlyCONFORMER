@@ -1,6 +1,6 @@
 __author__ = "Isabell Louise Grothaus"
-__license__ = ""
-__version__ = ""
+__license__ = "GNU GENERAL PUBLIC LICENSE, Version 3"
+__version__ = "1.0.0"
 __email__ = "grothaus@uni-bremen.de"
 __status__ = "Development"
 
@@ -19,10 +19,45 @@ class glyconformer:
 
     def __init__(self, inputfile, outputdir="./", length=None, glycantype=None ,angles=None, omega_angles=None, separator_index=None, separator=None, fepdir = None, order_max = None, order_min = None):
         
-        #set vars
+        """
+        Initialize object's attributes, aka setting variables.
+
+        Parameters
+        ----------
+        inputfile: str
+            Name of the file to read in, including file extension 
+        outputdir: str
+            Path to output directory, where created files are stored
+        length: int
+            Length to which the input file should be reduced
+            Default: lenght is read from input file
+        glycantype: str
+            Select glycan type from "LIBRARY_GLYCANS"
+        angles: list of str
+            List of torsion angle names
+        omega_angles: list of str
+            List of omega torsion angle names
+        separator_index: list of int
+        separator: list of str
+        fepdir: str
+            Path to free energy profile files
+        order_max: int
+            How many points on each side of a maxima to use for 
+            the comparison to consider comparator(n, n+x) to be True.
+        order_min: int
+            How many points on each side of a minima to use for 
+            the comparison to consider comparator(n, n+x) to be True.
+
+        Returns
+        -------
+        """
+        
         self.inputfile = inputfile
         self.outputdir = outputdir 
         
+        #attribute reading mainly depends on if a glycantype is specified and whether
+        #information are read from the LIBRARY_GLYCANS or from user input variables. 
+       
         if glycantype is None:
             self.angles = angles
             self.omega_angles = omega_angles
@@ -54,6 +89,10 @@ class glyconformer:
             self.colvar = colvar.iloc[::round(colvar.shape[0]/self.length), :]
             
     def _readinputfile(self):
+        """
+        Function reading a dataframe from file, using the self.inputfile.
+        """
+
         try:
             colvar = plumed.read_as_pandas(self.inputfile)
         except:
@@ -64,6 +103,21 @@ class glyconformer:
         return colvar
     
     def _readfeature(self, path, file):
+        """
+        Function reading a list from file.
+
+        Parameters
+        ----------
+        path, file : str
+            Name of the path + file to read in,
+            including file extension 
+
+        Returns
+        -------
+        list
+            Variable holding the list of strings
+        """
+
         feature = importlib.resources.read_text(path,file)
         feature = feature.split()
 
@@ -92,7 +146,22 @@ class glyconformer:
         return dict 
     
     def _readseparator(self, path, file):
-        
+        """
+        Function reading the separator information from file as lists.
+
+        Parameters
+        ----------
+        path, file : str
+            Name of the path + file to read in,
+            including file extension 
+
+        Returns
+        -------
+        index
+        sep
+            Variables holding the lists with the separator index and label
+        """
+
         index = []
         sep = []
         with importlib.resources.open_text(path,file) as f:
@@ -116,7 +185,7 @@ class glyconformer:
         ----------
         features : str
             List of torsion angle names (= column names in the 
-            COLVAR file) in the correct order
+            input file) in the correct order
         fepdir : str
             Directory from which to read the free energy files 
             (fes_*.dat) for the different torsion angles
@@ -219,12 +288,12 @@ class glyconformer:
 
         Parameters
         ----------
-        cd : dict
+        minima: dict
             Minima_dict
-        features : str
-            List of torsion angle names (= column names in COLVAR file) 
+        angles: str
+            List of torsion angle names (= column names in input file) 
             in the correct order
-        f_omega : str
+        omega_angles: str
             List of omega torsion angle names in the correct order
 
         Returns
@@ -376,7 +445,21 @@ class glyconformer:
     
     
     def run(self):
+        """
+        Function that converts the torsion angle values into corresponding letters, counts the occurance of individual conformer strings and assesses statistics by performing block averages.
         
+        Parameters
+        ----------
+        self
+
+        Returns
+        ------
+        binary: dataframe
+            shape of inputfile, with letters replacing the torsion angle values and including separators
+        population: dataframe
+            counting how often a conformer string occured
+        """
+
         binary, population, self.angles_separators, self.branches = self.create_binary(self.maxima, self.label, self.angles, self.separator_index, self.separator)
         self.perform_block_averages(binary, population, self.outputdir)
         
@@ -405,9 +488,9 @@ class glyconformer:
 
     def create_binary(self, maxima, label, angles, separator_index, separator):
         """
-        Converts torsion angle values read from COVLAR file into IUPAC letters.
+        Converts torsion angle values read from input file into IUPAC letters.
 
-        Function that reads in a COLVAR file with torsion angle values stored 
+        Function that reads in an input file with torsion angle values stored 
         in each column and replaces each value by the corresponding IUPAC label, 
         which was previously defined in the label_dict.
 
@@ -419,11 +502,9 @@ class glyconformer:
             Dictionary with features as keys and labels for each minima as values 
         angles : str
             List of torsion angle names (= column names) in the correct order
-        separator: list ....
-        loc3,loc4,loc5,loc6 : int 
-            Location where to put the branch in the confromer string. Indicate
-            the positon by an integer number
-         bra3,bra4,bra5,bra6 : str
+        separator_index: list of int
+            Where to insert the separators in the string
+        separator: list of str
             Name of the separator to be used for the branch, e.g. "2──"
 
         Returns
@@ -569,13 +650,13 @@ class glyconformer:
 
         Parameters
         ---------- 
-        c : str
+        c: str
             Binary COLVAR input file as a pandas dataframe in which the 
             torsion angle values are replaced by labels
-        ccf : mixed
+        ccf: mixed
             Pandas dataframe with the first column for the conformer string 
             and the second column for the occurance of the conformer (counts)
-        store_dir : str
+        outputdir: str
             Directory name to store the conformer files in
 
         Returns
@@ -626,17 +707,18 @@ class glyconformer:
 
         Parameters
         ----------
-        input_dir: str
-            Path to directory in which the "Cluster_conformer" 
-            files from the block averaging step are stores
-        limit: float
+        threshold: float
             Propability limit up to which conformers are included in the graph 
-        branches: str
-            List of branches present in the glycan
-        features: str
-            Updated features list
         ymax: float
             Maximum height of the y-axis (up to 100, as we plot probabilites), default is 100%
+        size: int
+            Text size
+        colors: list of strings
+            List of matplotlib color strings used to color the individual populations
+        dpi: int
+            Resolution of plot
+        file: str
+            Path+file, where to store the figure of the plot
 
         Returns
         -------
