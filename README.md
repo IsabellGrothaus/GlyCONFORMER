@@ -11,9 +11,12 @@ Check the paper or tutorial for a detailed explanation of the GlyCONFORMER strin
 ## Installation
 
 To use GlyCONFORMER, first install it using pip:
-
-$ pip install GlyCONFORMER
-    
+```
+pip install GlyCONFORMER
+```
+Stable performance was only tested and verified with python version 3.8.
+Pandas<=1.3.5 is required!
+ 
 ## Tutorial
 
 The tutorial juypter notebook should be run from within the GlyCONFORMER package folder or you have to change the path directing to the TUTORIAL folder.
