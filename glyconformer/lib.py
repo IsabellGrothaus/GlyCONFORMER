@@ -7,6 +7,7 @@ __status__ = "Development"
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 import plumed
 from scipy.signal import argrelextrema
 import json
@@ -15,6 +16,7 @@ import importlib.resources
 import csv
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
+from wpca import WPCA, EMPCA
 
 
 class glyconformer:
@@ -314,7 +316,7 @@ class glyconformer:
         label_dict = {k: tuple(d.get(k, 'none') for d in name_dicts) for k in set().union(*name_dicts)}
         return label_dict
     
-    def run(self):
+    def run(self, weights = None):
         """
         Function that converts the torsion angle values into corresponding letters, counts the occurance of individual conformer strings and assesses statistics by performing block averages.
         
@@ -328,11 +330,13 @@ class glyconformer:
         count: dataframe
             counting how often a conformer string occured
         """
+        self.weights = weights
 
-        self.binary, self.count = self._create_binary()
-        self._perform_block_averages()
-        
-        return self.binary, self.count
+        if self.weights == None:
+            self.binary, self.binary_compressed, self.count, self.angles_separator = self._create_binary()
+            self._perform_block_averages()
+        else:
+            self.binary, self.binary_compressed, self.count, self.angles_separator = self._create_binary()
 
     def _create_binary(self):
         """
@@ -387,17 +391,41 @@ class glyconformer:
             binary.insert(loc=self.separator_index[i], column=col_name, value=sep)
             self.branches.append(sep)
     
-        self.angles_separators = list(binary.columns)
-        count = binary.groupby(self.angles_separators).size().to_frame(name='Count').reset_index()
-        count['Conformer'] = count[count.columns[0:len(self.angles_separators)]].apply(lambda x: ''.join(x.dropna().astype(str)), axis=1)
-        count = count.drop(binary.columns[0:len(self.angles_separators)], axis=1)
+        angles_separators = list(binary.columns)
+        count = binary.groupby(angles_separators).size().to_frame(name='Count').reset_index()
+        count['Conformer'] = count[count.columns[0:len(angles_separators)]].apply(lambda x: ''.join(x.dropna().astype(str)), axis=1)
+        count = count.drop(binary.columns[0:len(angles_separators)], axis=1)
         count = count.sort_values("Count", ascending=False, ignore_index=True)
-     
-        self.binary_compressed = binary.copy()
-        self.binary_compressed['Conformer'] = self.binary_compressed[self.binary_compressed.columns[0:len(self.binary_compressed.columns)]].apply(lambda x: ''.join(x.dropna().astype(str)),axis=1)
-        self.binary_compressed = self.binary_compressed.drop(self.binary_compressed.columns[0:len(self.binary_compressed.columns)-1], axis=1)
         
-        return binary, count
+        binary_compressed = binary.copy()
+        binary_compressed['Conformer'] = binary_compressed[binary_compressed.columns[0:len(binary_compressed.columns)]].apply(lambda x: ''.join(x.dropna().astype(str)),axis=1)
+        binary_compressed = binary_compressed.drop(binary_compressed.columns[0:len(binary_compressed.columns)-1], axis=1)
+
+        if self.weights == None:
+            pass
+            
+        else:
+            w = pd.read_csv(self.weights, names = ["weights"], header = 0)
+            binary_w = pd.concat([binary_compressed, w], axis=1)
+
+            indexlist = []
+            count_weight = []
+            for i in range(count.shape[0]):
+                index = binary_w.index[binary_w['Conformer'] == count.loc[i,"Conformer"]].tolist()
+                indexlist.append(index)
+                count_weight.append(len(index))
+                
+            sum_weight = []
+            for i in range(len(indexlist)):
+                fraction = binary_w.loc[indexlist[i]]
+                sum_fraction = fraction.loc[:, 'weights'].sum()
+                sum_weight.append(sum_fraction)
+            sum_weight = pd.DataFrame(sum_weight , columns = ['Count'])  
+            weight_count = count.drop(columns=["Count"])
+            count = pd.concat([weight_count, sum_weight], axis=1)
+            count = count.sort_values("Count", ascending=False, ignore_index=True)
+        
+        return binary, binary_compressed, count, angles_separators
     
     def _perform_block_averages(self):
         """
@@ -440,7 +468,6 @@ class glyconformer:
             bbinary_short = bbinary_short.drop(bbinary_short.columns[0:len(features)], axis=1)
             # Join both dataframes taking 'Conformer' as key column for comparison
             bbinary_short = bbinary_short.set_index('Conformer')
-
             bbbinary_short = bbinary_short.join(count,how='outer',lsuffix='_block', rsuffix='_total')
             bbbinary_short = bbbinary_short.round(6)
             bbbinary_short = bbbinary_short.fillna(0.0)
@@ -452,7 +479,7 @@ class glyconformer:
     def plot(self,
              threshold=2,
              ymax=100, 
-             size=15, 
+             fontsize=15, 
              colors=["#173c4d","#146b65","#4e9973","#a7c09f","#dfa790","#c76156","#9a2b4c","#600b4a"],
              dpi=300,
              file=None):
@@ -470,7 +497,7 @@ class glyconformer:
             Propability limit up to which conformers are included in the graph 
         ymax: float
             Maximum height of the y-axis (up to 100, as we plot probabilites), default is 100%
-        size: int
+        fontsize: int
             Text size
         colors: list of strings
             List of matplotlib color strings used to color the individual populations
@@ -482,54 +509,76 @@ class glyconformer:
         Returns
         -------
         """
+        if self.weights == None:
+            hist1 = pd.read_csv("{}/Cluster_conformer1.dat".format(self.outputdir), delim_whitespace=True, header=0, names = ["Index", "Conformer", "Count_partial", "Prob", "Count_full"] )
+            N, average, average2 = 1, hist1.iloc[:,3], hist1.iloc[:,3]*hist1.iloc[:,3]
+            for i in range(2,11): 
+                histn = pd.read_csv("{}/Cluster_conformer{}.dat".format(self.outputdir, i), delim_whitespace=True, header=0, names = ["Index", "Conformer", "Count_partial", "Prob", "Count_full"])
+                N, average, average2 = N + 1, average + histn.iloc[:,3], average2 + histn.iloc[:,3]*histn.iloc[:,3]
+    
+            average = pd.DataFrame(average/N, columns=['Prob'])
+            average = average.drop(average[average['Prob'] < threshold/100 ].index)
+            average = average.sort_values(by='Prob',ascending=False)
+            indexlist = average.index.tolist()
+    
+            hist = pd.read_csv("{}/Cluster_conformer1.dat".format(self.outputdir), names = ["Index", "Conformer", "Count_partial", "Prob", "Count_full"], sep = " ", dtype = str, header=0)
+            hist = hist.filter(indexlist, axis = 0)
 
-        hist1 = pd.read_csv("{}/Cluster_conformer1.dat".format(self.outputdir), delim_whitespace=True, header=0, names = ["Index", "Conformer", "Count_partial", "Prob", "Count_full"] )
-        N, average, average2 = 1, hist1.iloc[:,3], hist1.iloc[:,3]*hist1.iloc[:,3]
-        for i in range(2,11): 
-            histn = pd.read_csv("{}/Cluster_conformer{}.dat".format(self.outputdir, i), delim_whitespace=True, header=0, names = ["Index", "Conformer", "Count_partial", "Prob", "Count_full"])
-            N, average, average2 = N + 1, average + histn.iloc[:,3], average2 + histn.iloc[:,3]*histn.iloc[:,3]
-
-
-        average = pd.DataFrame(average/N, columns=['Prob'])
-        average = average.drop(average[average['Prob'] < threshold/100 ].index)
-        average = average.sort_values(by='Prob',ascending=False)
-        indexlist = average.index.tolist()
-
-        hist = pd.read_csv("{}/Cluster_conformer1.dat".format(self.outputdir), names = ["Index", "Conformer", "Count_partial", "Prob", "Count_full"], sep = " ", dtype = str)
-        hist = hist.filter(indexlist, axis = 0)
-        namelist = hist['Conformer'].tolist()
-        name_list = self._include_branch_conformer_string(namelist, self.branches, self.angles_separators)
-        name_list = self._vertical_conformer_string(namelist)
-        average2 = average2.to_frame()
-        average2.columns = ["Error"]
-        average2 = average2.filter(indexlist, axis = 0)
-
-        # Final variances
-        var = (N/(N-1))*( average2.Error / N - average.Prob*average.Prob ) 
-        # Errors
-        error = np.sqrt( var / N )
-
-        pos_list = np.arange(len(name_list))
-
-        colors = colors
-        plt.rcParams['figure.dpi'] = dpi
-        ax = plt.axes()
-        ax.xaxis.set_major_locator(ticker.FixedLocator((pos_list)))
-        ax.xaxis.set_major_formatter(ticker.FixedFormatter((name_list)))   
-        bar = plt.bar(pos_list, average.Prob * 100, yerr = error * 100)
-        for i in range(len(pos_list)):
-            bar[i].set_color(colors[i])
-        plt.ylim(0,ymax)
-        plt.xticks(fontsize = size)
-        plt.yticks(fontsize = size)
-        plt.xlabel("Conformer", fontsize = size)
-        plt.ylabel('Probability [%]', fontsize = size)
-        
-        if file is None:
-            pass
+            namelist = hist['Conformer'].tolist()
+            name_list = self._include_branch_conformer_string(namelist, self.branches, self.angles_separator)
+            name_list = self._vertical_conformer_string(name_list)
+            average2 = average2.to_frame()
+            average2.columns = ["Error"]
+            average2 = average2.filter(indexlist, axis = 0)
+    
+            # Final variances
+            var = (N/(N-1))*( average2.Error / N - average.Prob*average.Prob ) 
+            # Errors
+            error = np.sqrt( var / N )
+    
+            pos_list = np.arange(len(name_list))
+    
+            colors = colors
+            plt.rcParams['figure.dpi'] = dpi
+            ax = plt.axes()
+            ax.xaxis.set_major_locator(ticker.FixedLocator((pos_list)))
+            ax.xaxis.set_major_formatter(ticker.FixedFormatter((name_list)))   
+            bar = plt.bar(pos_list, average.Prob * 100, yerr = error * 100)
+            for i in range(len(pos_list)):
+                bar[i].set_color(colors[i])
+            plt.ylim(0,ymax)
+            plt.xticks(fontsize = fontsize)
+            plt.yticks(fontsize = fontsize)
+            plt.xlabel("Conformer", fontsize = fontsize)
+            plt.ylabel('Probability [%]', fontsize = fontsize)
+            
+            if file is None:
+                pass
+            else:
+                plt.savefig(file, bbox_inches='tight')
+            plt.show()
+            
         else:
-            plt.savefig(file, bbox_inches='tight')
-        plt.show()
+            count = self.count.drop(self.count[self.count['Count'] < threshold/100 ].index)
+            indexlist = count.index.tolist()
+            namelist = count['Conformer'].tolist()
+            name_list = _include_branch_conformer_string(namelist, self.branches, self.angles_separator)
+            name_list = _vertical_conformer_string(name_list)
+            pos_list = np.arange(len(name_list))
+            colors = colors
+            plt.rcParams['figure.dpi'] = dpi
+            ax = plt.axes()
+            ax.xaxis.set_major_locator(ticker.FixedLocator((pos_list)))
+            ax.xaxis.set_major_formatter(ticker.FixedFormatter((name_list)))   
+            bar = plt.bar(pos_list, count.Count * 100)
+            for i in range(len(pos_list)):
+                bar[i].set_color(colors[i])
+            plt.ylim(0,ymax)
+            plt.xticks(fontsize = fontsize)
+            plt.yticks(fontsize = fontsize)
+            plt.xlabel("Conformer", fontsize = fontsize)
+            plt.ylabel('Probability [%]', fontsize = fontsize)
+            plt.show()
     
     def _vertical_conformer_string(self, namelist):
         """
@@ -771,8 +820,9 @@ class glyconformer:
     def pca(self,
             components = 2,
             ranks = 3,
-            components_plot = [1,2], #only 2D supported 
-#
+            components_plot = [1,2], #only 2D supported #
+            all = True,
+            conformer = True,
             label = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"],
             color = ["#173c4d","#146b65","#4e9973","#a7c09f","#dfa790","#c76156","#9a2b4c","#600b4a"],
             fontsize = 7,
@@ -797,12 +847,22 @@ class glyconformer:
         top = []
         for r in range(0,ranks):
             top.append(self.count.loc[r, "Conformer"])
-        #
-        #colvar_scaled = StandardScaler().fit_transform(colvar_pca)
-        # Choose number of principle components
-        pca = PCA(n_components=components)
-        # Compute PCA and transform into dataframe with target addition
-        principalComponents = pca.fit_transform(colvar_pca)
+        if self.weights == None: 
+            # Choose number of principle components
+            pca = PCA(n_components=components)
+            # Compute PCA and transform into dataframe with target addition
+            principalComponents = pca.fit_transform(colvar_pca)
+        else:
+            w = pd.read_csv(self.weights, names = ["weights"], header = 0)
+            n = len(colvar_pca.columns)
+            weights_pca = pd.concat([w] * (n+1), axis=1, ignore_index=True)
+            weights_pca = pd.DataFrame(data = weights_pca, columns = np.linspace(0,n-1,n))
+    
+            # Choose number of principle components
+            pca = EMPCA(n_components=components)
+            # Compute PCA and transform into dataframe with target addition
+            principalComponents = pca.fit_transform(colvar_pca, weights = weights_pca)
+
         principalDf = pd.DataFrame(data = principalComponents)
         finalDf = pd.concat([principalDf, self.binary_compressed[['Conformer']]], axis = 1)
 
@@ -819,7 +879,7 @@ class glyconformer:
             loadings_df = pd.DataFrame.from_dict(pc_loadings)
             loadings_df['feature_names'] = feature_names
             loadings_df = loadings_df.set_index('feature_names')
-            
+
             #Average vectors of sin and cos to make the interpretation more comprehensive  
             comp_average = [[] for _ in range(0,components)]
             loadings_r = pd.DataFrame({"feature_names": self.colvar.columns})
@@ -827,7 +887,7 @@ class glyconformer:
                 for i in range(0,len(loadings_df),2):
                     comp_average[j].append((loadings_df.iloc[i,j] + loadings_df.iloc[i+1,j])/2)
                 loadings_r[pc] = comp_average[j]
-        
+
             # Scale PCS into a DataFrame
             pca_df_scaled = finalDf.copy()
             scaler_df = finalDf.iloc[:,components_plot[0]-1]
@@ -853,19 +913,25 @@ class glyconformer:
             else:
                 pass
             #plot all
-            ax.scatter(pca_df_scaled.iloc[:,0], pca_df_scaled.iloc[:,1], c = "gray", alpha = 0.3, marker = ".", s = 5, label = "all")
+            if all == True:
+                ax.scatter(pca_df_scaled.iloc[:,0], pca_df_scaled.iloc[:,1], c = "gray", alpha = 0.3, marker = ".", s = 5, label = "all")
             #plot conformers
-            for i, t in enumerate(top):
-                indicesToKeep = pca_df_scaled.loc[:,"Conformer"] == t
-                ax.scatter(pca_df_scaled.loc[indicesToKeep,0], pca_df_scaled.loc[indicesToKeep,1]
-                           , c = color[i]
-                           , s = 30
-                           , label = label[i]
-                           , edgecolors = "black"
-                           , marker = "."
-                           , linewidth = 0.2
-                           , alpha = 1
-                               )
+            else:
+                pass
+            if all == True:
+                for i, t in enumerate(top):
+                    indicesToKeep = pca_df_scaled.loc[:,"Conformer"] == t
+                    ax.scatter(pca_df_scaled.loc[indicesToKeep,0], pca_df_scaled.loc[indicesToKeep,1]
+                               , c = color[i]
+                               , s = 30
+                               , label = label[i]
+                               , edgecolors = "black"
+                               , marker = "."
+                               , linewidth = 0.2
+                               , alpha = 1
+                                   )
+            else:
+                pass
             #plot coefficient
             distances = []
             for row in range(0,len(loadings_r)):
@@ -902,19 +968,25 @@ class glyconformer:
             else:
                 pass
             #plot all
-            ax.scatter(finalDf.iloc[:,components_plot[0]-1], finalDf.iloc[:,components_plot[1]-1], c = "darkgray", alpha = 0.3, marker = ".", s = 5, label = "all")
+            if all == True:
+                ax.scatter(finalDf.iloc[:,components_plot[0]-1], finalDf.iloc[:,components_plot[1]-1], c = "darkgray", alpha = 0.3, marker = ".", s = 5, label = "all")
             #plot conformers
-            for i, t in enumerate(top):
-                indicesToKeep = finalDf.loc[:,"Conformer"] == t
-                ax.scatter(finalDf.loc[indicesToKeep,components_plot[0]-1], finalDf.loc[indicesToKeep,components_plot[1]-1]
-                           , c = color[i]
-                           , s = 30
-                           , label = label[i]
-                           , edgecolors = "black"
-                           , marker = "."
-                           , linewidth = 0.2
-                           , alpha = 1
-                               )
+            else:
+                pass
+            if conformer == True:
+                for i, t in enumerate(top):
+                    indicesToKeep = finalDf.loc[:,"Conformer"] == t
+                    ax.scatter(finalDf.loc[indicesToKeep,components_plot[0]-1], finalDf.loc[indicesToKeep,components_plot[1]-1]
+                               , c = color[i]
+                               , s = 30
+                               , label = label[i]
+                               , edgecolors = "black"
+                               , marker = "."
+                               , linewidth = 0.2
+                               , alpha = 1
+                                   )
+            else:
+                pass
             if pick == True:
                 for d in datatopick:
                     ax.scatter(finalDf.iloc[d,components_plot[0]-1], finalDf.iloc[d,components_plot[1]-1], c = colorpick, marker = "x", s = 5)
@@ -998,3 +1070,616 @@ class glyconformer:
         else:
             plt.savefig(file, bbox_inches='tight')
         plt.show()
+###################################################
+#General functions that are shared between classes
+def _vertical_conformer_string(namelist):
+    """
+    Function that converts the conform string from a 
+    horizontal format to a vertical one.
+    Parameters
+    ----------
+    namelist : str
+        List of conformer strings 
+    Returns
+    -------
+    namelist_v : str
+        Conformer strings as list in a vertical format
+    """
+    namelist_v = []
+    for i in range(len(namelist)):
+        res = ''
+        for j,ele in enumerate(namelist[i]):
+            if j in (range(2,1000,3)):
+                res += ele + "\n"
+            else:
+                res += ele
+        namelist_v += [res]
+    return namelist_v
+    
+def _include_branch_conformer_string(namelist, branches, features):
+    """
+    Function that inserts branch separators and replaces 
+    labels by dots in the conform strings.
+    Parameters
+    ----------
+    namelist : str
+        List of conformer strings 
+    branches : str
+        List of branch names present in the glycan
+    features : str
+        List of features
+    Returns
+    -------
+    namelist : str
+        List of conformer strings with branch separators 
+        and repetative labels exchange by dots
+    """
+    for i in range(1,len(namelist)):
+        for j,k in zip(range(0,len(features)*3,3),range(3,len(features)*3+1,3)):
+            if namelist[i][j:k] == namelist[0][j:k]:
+                newname = namelist[i][:j] + " • " + namelist[i][k:]
+                namelist[i] = newname
+            else: 
+                pass 
+        # Limitation: Can only replace branch separators which do occur max. twice
+        for b in branches:
+            index = namelist[0].find(b)
+            newbranch = namelist[i][:index] + "───" + namelist[i][index+3:]
+            namelist[i] = newbranch
+        for b in branches:
+            rindex = namelist[0].rfind(b)
+            if rindex == "-1":
+                pass
+            else:
+                rnewbranch = namelist[i][:rindex] + "───" + namelist[i][rindex+3:]
+                namelist[i] = rnewbranch
+    return namelist
+
+def _readinputfile(inputfile, angles):
+    """
+    Function reading a dataframe from file, using the self.inputfile.
+    """
+    try:
+        colvar = plumed.read_as_pandas(inputfile)
+    except:
+        colvar = pd.read_csv(inputfile, delim_whitespace=True)
+    finally:
+        colvar = colvar[angles]
+        
+    return colvar
+
+##########################################
+
+class glycompare:
+    # Class variables
+    ## maybe add directory names ?
+    def __init__(self, inputfile, inputdir, common_angles, common_branches, common_angles_separators, count, binary_compressed, outputdir = "./", n_blocks = 10, weights = None): # check later which parameters are really necessary?!
+    
+        # Instance variables
+        """
+        Initialize object's attributes, aka setting variables.
+
+        Parameters
+        ----------
+        inputdir: str
+            List of directory names to read in, storing the Cluster_conformer.dat files
+            Files for each simulation should have a separate directory
+        outputdir: str
+            Path to output directory, where created files are stored
+        common_angles: list of str
+            List of common torsion angle names 
+
+        # complete this!!!
+        
+        Returns
+        -------
+        """
+        self.inputfile = inputfile
+        self.inputdir = inputdir
+        self.outputdir = outputdir 
+        self.common_angles = common_angles
+        self.common_branches = common_branches
+        self.common_angles_separators = common_angles_separators
+        self.n_blocks = n_blocks
+        self.count = count
+        self.binary_compressed = binary_compressed
+        self.weights = weights
+
+    def _join_data(self): #limited to 4 datasets, but comparing more does anyway makes not much sense
+        """
+        Function that reads in the Cluster_conformer data for n simulations and joins dataframes.
+        
+        Output:
+            csv-files for each of the blocks (from block averaging) cointaining the joint dataframes
+        """
+        
+        header = ["Index", "Conformer", "Count_partial", "Probability", "Count_full"]
+        blocks = [[] for _ in range(len(self.inputdir))]
+        
+        # Load partially data sorted for n blocks
+        for b in range(1, self.n_blocks + 1):
+            for i, j in enumerate(self.inputdir):
+                blocks[i] = pd.read_csv("{}/Cluster_conformer{}.dat".format(j,b), delim_whitespace=True, names = header, header = 0, dtype = str)
+                blocks[i] = blocks[i].drop(columns = ['Count_full', 'Count_partial', 'Index'])
+                blocks[i] = blocks[i].set_index('Conformer') 
+            if len(blocks) == 2:
+                    jointblocks = pd.concat([blocks[0], blocks[1]], axis=1)
+            if len(blocks) == 3:
+                    jointblocks = pd.concat([blocks[0], blocks[1], blocks[2]], axis=1)
+            if len(blocks) == 4:
+                    jointblocks = pd.concat([blocks[0], blocks[1], blocks[2], blocks[3]], axis=1)        
+            jointblocks = jointblocks.fillna(0.0).reset_index()
+            jointblocks.to_csv("{}/Joint_cluster_conformer{}.dat".format(self.outputdir,b), sep= " ", header = False)
+
+    def plot(self, # so far only able to plot two comparative plots
+             threshold = 2,
+             ymax = 100, 
+             fontsize = 15, 
+             colors = ["#173c4d","#146b65","#4e9973","#a7c09f","#dfa790","#c76156","#9a2b4c","#600b4a","#6C7D85","#719F91","#96BBAB","#C9D8C6","#EAC9BC","#DBA099","#C38196","#996C92"],
+             dpi = 300,
+             label = ["Glycan 1", "Glycan 2", "Glycan 3", "Glycan 4"], 
+             file = None):
+        """ Function that reads in the Joint cluster conformer data, calculates the block averages, standard deviations and plots everything in a bar graph.
+        """
+        # Join dataframes
+        self._join_data()
+        
+        # Initialize variables
+        prob = [[] for _ in range(len(self.inputdir))]
+        squared_prob = [[] for _ in range(len(self.inputdir))]
+        average_prob = [[] for _ in range(len(self.inputdir))]
+        errors = [[] for _ in range(len(self.inputdir))]
+        
+        # Load partially sorted data and calculate averages
+        for d in range(len(self.inputdir)):    
+            for i in range(1, self.n_blocks):
+                blocks = pd.read_csv(f"{self.outputdir}/Joint_cluster_conformer{i}.dat", delim_whitespace=True, usecols=[d+2])
+                if len(prob[d]) == 0:
+                    prob[d] = blocks.iloc[:,0]
+                    squared_prob[d] = blocks.iloc[:,0]**2
+                else:
+                    prob[d] += blocks.iloc[:,0]
+                    squared_prob[d] += blocks.iloc[:,0]**2
+            average_prob[d] = (prob[d] / self.n_blocks).to_frame()
+
+        if len(prob) == 2:
+            total_average = pd.concat([average_prob[0], average_prob[1]], axis=1)        
+        elif len(prob) == 3:
+            total_average = pd.concat([average_prob[0], average_prob[1], average_prob[2]], axis=1) 
+        elif len(prob) == 4:
+            total_average = pd.concat([average_prob[0], average_prob[1], average_prob[2], average_prob[3]], axis=1)
+        else:
+            print("GlyCOMPARE can only handle up to four datasets!")
+        
+        total_average = total_average.drop(total_average[total_average.iloc[:,0] < threshold/100].index, inplace=False)
+        total_average = total_average.sort_values(by = "0.0",ascending=False)
+        indexlist = total_average.index.tolist()
+
+        for d in range(len(self.inputdir)):
+            average_prob[d] = average_prob[d].filter(indexlist, axis = 0)
+            squared_prob[d] = squared_prob[d].loc[indexlist].to_frame()
+            errors[d] = abs((self.n_blocks / (self.n_blocks - 1)) * (squared_prob[d] / self.n_blocks - average_prob[d]**2))
+            errors[d] = np.sqrt(errors[d] / self.n_blocks)
+
+        # Create namelist
+        dummy = pd.read_csv(f"{self.outputdir}/Joint_cluster_conformer1.dat", delim_whitespace=True, index_col = [0], header = None)
+        dummy = dummy.filter(indexlist, axis = 0)
+        namelist = dummy.iloc[:,0].tolist()
+
+        # Make conformer string look nice
+        pos_list = np.arange(len(namelist))
+        namelist = _include_branch_conformer_string(namelist, self.common_branches, self.common_angles_separators)
+        namelist_v = _vertical_conformer_string(namelist)
+        
+        plt.rcParams['figure.dpi'] = dpi
+        ax = plt.axes()
+        ax.xaxis.set_major_locator(ticker.FixedLocator((pos_list)))
+        ax.xaxis.set_major_formatter(ticker.FixedFormatter((namelist_v)))   
+        plt.tick_params(axis='both', which='major', labelsize=fontsize)
+        plt.xlabel("Conformer", fontsize=fontsize)
+        plt.ylabel('Probability [%]', fontsize=fontsize)
+        if len(prob) == 2:
+            width = 0.42
+            for i,c in zip(range(0,len(pos_list)),colors):
+                plt.bar(pos_list[i] - width/2, average_prob[0].iloc[i,0] * 100, width = width, color = c, yerr = errors[0].iloc[i,0] * 100, edgecolor = "black")
+                plt.bar(pos_list[i] + width/2, average_prob[1].iloc[i,0] * 100, width = width, color = c, yerr = errors[1].iloc[i,0] * 100, edgecolor = "black", hatch = "//")
+            l1_patch = mpatches.Patch(edgecolor= "black", facecolor="white", label=label[0])
+            l2_patch = mpatches.Patch(edgecolor= "black", facecolor="white", label=label[1], hatch = "//")
+            plt.legend(handles=[l1_patch, l2_patch], fontsize=fontsize)
+        elif len(prob) == 3:
+            width = 0.3
+            for i,c in zip(range(0,len(pos_list)),colors):
+                plt.bar(pos_list[i] - width, average_prob[0].iloc[i,0] * 100, width = width, color = c, yerr = errors[0].iloc[i,0] * 100, edgecolor = "black")
+                plt.bar(pos_list[i], average_prob[1].iloc[i,0] * 100, width = width, color = c, yerr = errors[1].iloc[i,0] * 100, edgecolor = "black", hatch = "//")
+                plt.bar(pos_list[i] + width, average_prob[2].iloc[i,0] * 100, width = width, color = c, yerr = errors[2].iloc[i,0] * 100, edgecolor = "black", hatch = "o")
+            l1_patch = mpatches.Patch(edgecolor= "black", facecolor="white", label=label[0])
+            l2_patch = mpatches.Patch(edgecolor= "black", facecolor="white", label=label[1], hatch = "//")
+            l3_patch = mpatches.Patch(edgecolor= "black", facecolor="white", label=label[2], hatch = "o")
+            plt.legend(handles=[l1_patch, l2_patch, l3_patch], fontsize=fontsize)
+        elif len(prob) == 4:   
+            width = 0.2
+            for i,c in zip(range(0,len(pos_list)),colors):
+                plt.bar(pos_list[i] - width*1.5, average_prob[0].iloc[i,0] * 100, width = width, color = c, yerr = errors[0].iloc[i,0] * 100, edgecolor = "black")
+                plt.bar(pos_list[i] - width/2, average_prob[1].iloc[i,0] * 100, width = width, color = c, yerr = errors[1].iloc[i,0] * 100, edgecolor = "black", hatch = "//")
+                plt.bar(pos_list[i] + width/2, average_prob[2].iloc[i,0] * 100, width = width, color = c, yerr = errors[2].iloc[i,0] * 100, edgecolor = "black", hatch = "o")
+                plt.bar(pos_list[i] + width*1.5, average_prob[3].iloc[i,0] * 100, width = width, color = c, yerr = errors[3].iloc[i,0] * 100, edgecolor = "black", hatch = "x")
+            l1_patch = mpatches.Patch(edgecolor= "black", facecolor="white", label=label[0])
+            l2_patch = mpatches.Patch(edgecolor= "black", facecolor="white", label=label[1], hatch = "//")
+            l3_patch = mpatches.Patch(edgecolor= "black", facecolor="white", label=label[2], hatch = "o")
+            l4_patch = mpatches.Patch(edgecolor= "black", facecolor="white", label=label[3], hatch = "x")
+            plt.legend(handles=[l1_patch, l2_patch, l3_patch, l4_patch], fontsize=fontsize)
+        plt.ylim(0,ymax) 
+        if file is None:
+            pass
+        else:
+            plt.savefig(file, bbox_inches='tight')
+        plt.show()
+    
+    def pca(self, #do we want to return data that is useful for PCA analysis? Also in Glyconformer PCA
+            length = None,
+            components = 2,
+            ranks = 3,
+            all = True,
+            conformer = True,
+            components_plot = [1,2], #only 2D supported 
+            #
+            dataset_label = ["Glycan 1", "Glycan 2", "Glycan 3", "Glycan 4"], 
+            label = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"],
+            color = ["#173c4d","#146b65","#4e9973","#a7c09f","#dfa790","#c76156","#9a2b4c","#600b4a"],
+            color_basic = ["gray","gray","gray","gray"],
+            marker = [".","x",":","o"],
+            fontsize = 7,
+            dpi = 600,
+            figsize = [5,5],
+            ticks = True,
+            legend = True,
+            pick = False,
+            datatopick = [0,0],
+            colorpick = "darkred",
+            biplot = False,
+            coefficients = 3,
+            file = None):
+
+        colvars = [[] for _ in range(len(self.inputdir))]
+        colvars_pca = [[] for _ in range(len(self.inputdir))]
+        lengths = [[] for _ in range(len(self.inputdir))] 
+        top = [[] for _ in range(len(self.inputdir))]
+        finalDf = [[] for _ in range(len(self.inputdir))]
+        w = [[] for _ in range(len(self.inputdir))]
+        weights_pca = [[] for _ in range (len(self.inputdir))]
+        
+        for i,f in enumerate(self.inputfile):
+            
+            if length is None:
+                colvars[i] = _readinputfile(f,self.common_angles)
+                lengths[i] = len(colvars[i]) 
+            else:
+                lengths[i] = length 
+                colvars[i] = _readinputfile(f,self.common_angles)
+                colvars[i] = colvars[i].iloc[::round(colvars[i].shape[0]/lengths[i]), :]
+            
+            colvars_pca[i] = pd.DataFrame({"index": colvars[i].index})
+            for a in self.common_angles:
+                colvars_pca[i].loc[:,"sin_{}".format(a)] = np.sin(colvars[i].loc[:,a])
+                colvars_pca[i].loc[:,"cos_{}".format(a)] = np.cos(colvars[i].loc[:,a])
+            colvars_pca[i] = colvars_pca[i].drop(columns = ["index"])
+
+        if len(self.inputdir) == 2:
+            colvar_pca = pd.concat([colvars_pca[0], colvars_pca[1]], axis=0)
+            conformer_pca = pd.concat([self.binary_compressed[0], self.binary_compressed[1]], axis=0)
+            l_start = [0, lengths[0]+1]
+            l_end = [lengths[0]+1, lengths[0]+lengths[1]+2]
+        elif len(self.inputdir) == 3:
+            colvar_pca = pd.concat([colvars_pca[0], colvars_pca[1], colvars_pca[2]], axis=0)
+            conformer_pca = pd.concat([self.binary_compressed[0], self.binary_compressed[1], self.binary_compressed[2]], axis=0)
+            l_start = [0, lengths[0]+1, lengths[0]+lengths[1]+2]
+            l_end = [lengths[0]+1, lengths[0]+lengths[1]+2, lengths[0]+lengths[1]+lengths[2]+3]
+        elif len(self.inputdir) == 4:
+            colvar_pca = pd.concat([colvars_pca[0], colvars_pca[1], colvars_pca[2], colvars_pca[3]], axis=0)
+            conformer_pca = pd.concat([self.binary_compressed[0], self.binary_compressed[1], self.binary_compressed[2], self.binary_compressed[3]], axis=0)
+            l_start = [0, lengths[0]+1, lengths[0]+lengths[1]+2, lengths[0]+lengths[1]+lengths[2]+3]
+            l_end = [lengths[0]+1, lengths[0]+lengths[1]+2, lengths[0]+lengths[1]+lengths[2]+3, lengths[0]+lengths[1]+lengths[2]+lengths[3]+4]
+
+        if self.weights == None: 
+            # Choose number of principle components
+            pca = PCA(n_components=components)
+            # Compute PCA and transform into dataframe with target addition
+            principalComponents = pca.fit_transform(colvar_pca)
+        else:
+            for d in range(len(self.inputdir)):
+                w[d] = pd.read_csv(self.weights[d], names = ["weights"], header = 0)
+                n = len(colvar_pca.columns)
+                weights_pca[d] = pd.concat([w[d]] * (n+1), axis=1, ignore_index=True)
+                weights_pca[d] = pd.DataFrame(data = weights_pca[d], columns = np.linspace(0,n-1,n))
+            if len(self.inputdir) == 2:
+                weights_pca = pd.concat([weights_pca[0], weights_pca[1]], axis=0)
+            elif len(self.inputdir) == 3:
+                weights_pca = pd.concat([weights_pca[0], weights_pca[1], weights_pca[2]], axis=0)
+            elif len(self.inputdir) == 4:
+                weights_pca = pd.concat([weights_pca[0], weights_pca[1], weights_pca[2], weights_pca[3]], axis=0)
+            # Choose number of principle components
+            pca = WPCA(n_components=components)
+            # Compute PCA and transform into dataframe with target addition
+            principalComponents = pca.fit_transform(colvar_pca, weights = weights_pca)
+        
+        principalDf = pd.DataFrame(data = principalComponents)
+        conformer_pca = conformer_pca.reset_index()
+        principalDf = pd.concat([principalDf, conformer_pca[['Conformer']]], axis = 1)
+
+        if biplot is True:
+            # Principal components correlation coefficients, eigenvectors of CoVar Matrix
+            loadings = pca.components_
+            # Feature names before PCA
+            feature_names = colvar_pca.columns
+            # PC names
+            pc_list = [f'PC{i}' for i in list(range(1, components + 1))]
+            # Match PC names to loadings
+            pc_loadings = dict(zip(pc_list, loadings))
+            # Matrix of corr coefs between feature names and PCs
+            loadings_df = pd.DataFrame.from_dict(pc_loadings)
+            loadings_df['feature_names'] = feature_names
+            loadings_df = loadings_df.set_index('feature_names')
+            
+            #Average vectors of sin and cos to make the interpretation more comprehensive  
+            comp_average = [[] for _ in range(0,components)]
+            loadings_r = pd.DataFrame({"feature_names": colvars[0].columns})
+            for j, pc in enumerate(pc_list):
+                for i in range(0,len(loadings_df),2):
+                    comp_average[j].append((loadings_df.iloc[i,j] + loadings_df.iloc[i+1,j])/2)
+                loadings_r[pc] = comp_average[j]
+            
+            
+            #Plot
+            plt.rcParams['figure.dpi'] = dpi
+            fig = plt.figure(figsize = (figsize))
+            ax = fig.add_subplot(1,1,1)
+            ax.set_xlabel('Principal Component {}'.format(components_plot[0]), fontsize = fontsize)
+            ax.set_ylabel('Principal Component {}'.format(components_plot[1]), fontsize = fontsize)
+
+            if ticks == False:
+                ax.get_xaxis().set_ticks([])
+                ax.get_yaxis().set_ticks([])
+            else:
+                pass
+
+            for d, l_s, l_e in zip(range(len(self.inputdir)),l_start,l_end):
+                finalDf[d] = principalDf.iloc[l_s:l_e,:]
+                
+                for r in range(0,ranks):
+                    top[d].append(self.count[d].loc[r, "Conformer"])
+                
+                # Scale PCS into a DataFrame
+                pca_df_scaled = finalDf[d].copy()
+                scaler_df = finalDf[d].iloc[:,components_plot[0]-1]
+                scaler_df = pd.DataFrame(data = scaler_df)
+                scaler_df = scaler_df.T.reset_index(drop=True).T
+                scaler_df[len(scaler_df.columns)] = finalDf[d].iloc[:,components_plot[1]-1]
+                pca_df_scaled = scaler_df.copy()
+                pca_df_scaled["Conformer"] = finalDf[d].loc[:,"Conformer"]
+                scaler = 1 / (scaler_df.max() - scaler_df.min())
+                for index in scaler.index:
+                    pca_df_scaled[index] *= scaler[index]
+
+                #plot all
+                if all == True: 
+                    ax.scatter(pca_df_scaled.iloc[:,0], pca_df_scaled.iloc[:,1], c = color_basic[d], alpha = 0.5, marker = marker[d], s = 5, label = dataset_label[d])
+                else:
+                    pass
+                if conformer == True:
+                    for i, t in enumerate(top[d]):
+                        indicesToKeep = pca_df_scaled.loc[:,"Conformer"] == t
+                        ax.scatter(pca_df_scaled.loc[indicesToKeep,0], pca_df_scaled.loc[indicesToKeep,1]
+                                   , c = color[i]
+                                   , s = 30
+                                   , label = label[i]
+                                   , edgecolors = "black"
+                                   , marker = marker[d]
+                                   , linewidth = 0.2
+                                   , alpha = 1
+                                       )
+                else:
+                    pass
+            #plot coefficient
+            distances = []
+            for row in range(0,len(loadings_r)):
+                distances.append(((0-loadings_r.iloc[row,components_plot[0]])**2 + (0-loadings_r.iloc[row,components_plot[1]])**2)**0.5)
+            loadings_r['vector_norm'] = distances
+            loadings_v = loadings_r.sort_values(by=['vector_norm'], ascending = False)
+            #
+            for i in range(0,coefficients):
+                plt.text(loadings_v.iloc[i,components_plot[0]]+0.025, loadings_v.iloc[i,components_plot[1]]+0.025, loadings_v.iloc[i,0], fontsize=5, bbox=dict(boxstyle='round', alpha = 0.7, facecolor = "white", edgecolor="gray"))
+                ax.scatter(loadings_v.iloc[i,components_plot[0]], loadings_v.iloc[i,components_plot[1]], s=100, c = "darkgray", alpha = 0.7)
+                plt.arrow(
+                    0, 0, # coordinates of arrow base
+                    loadings_v.iloc[i,components_plot[0]], # length of the arrow along x
+                    loadings_v.iloc[i,components_plot[1]], # length of the arrow along y
+                    color='black', 
+                    head_width=0.01,
+                    linewidth=0.2
+                    )
+            
+            #Labels
+            if legend == True:
+                ax.legend(fontsize = fontsize)
+            else:
+                pass 
+        
+        else:
+            #Plot
+            plt.rcParams['figure.dpi'] = dpi
+            fig = plt.figure(figsize = (figsize))
+            ax = fig.add_subplot(1,1,1)
+            ax.set_xlabel('Principal Component {}'.format(components_plot[0]), fontsize = fontsize)
+            ax.set_ylabel('Principal Component {}'.format(components_plot[1]), fontsize = fontsize)
+            if ticks == False:
+                ax.get_xaxis().set_ticks([])
+                ax.get_yaxis().set_ticks([])
+            else:
+                pass
+            
+            for d, l_s, l_e in zip(range(len(self.inputdir)),l_start,l_end):
+                finalDf[d] = principalDf.iloc[l_s:l_e,:]
+                for r in range(0,ranks):
+                    top[d].append(self.count[d].loc[r, "Conformer"])
+                
+                if all == True:
+                    ax.scatter(finalDf[d].iloc[:, components_plot[0]-1], finalDf[d].iloc[:,components_plot[1]-1], c = color_basic[d], alpha = 0.5, marker = marker[d], s = 5, label = dataset_label[d])
+                else:
+                    pass
+                if conformer == True:
+                    for i, t in enumerate(top[d]):
+                        indicesToKeep = finalDf[d].loc[:,"Conformer"] == t
+                        ax.scatter(finalDf[d].loc[indicesToKeep,components_plot[0]-1], finalDf[d].loc[indicesToKeep,components_plot[1]-1]
+                                   , c = color[i]
+                                   , s = 30
+                                   , label = label[i]
+                                   , edgecolors = "black"
+                                   , marker = marker[d]
+                                   , linewidth = 0.2
+                                   , alpha = 1
+                                       )
+                else:
+                    pass
+
+            if legend == True:
+                ax.legend(fontsize = fontsize)
+            else:
+                pass
+        #
+        if pick == True:
+            for d in range(len(self.inputdir)):
+                for p in datatopick:
+                    ax.scatter(finalDf[d].iloc[p,components_plot[0]-1], finalDf[d].iloc[p,components_plot[1]-1], c = colorpick, marker = marker[d], s = 5)
+        else:
+            pass
+            
+        if file is None:
+            pass
+        else:
+            plt.savefig(file, bbox_inches='tight')
+        plt.show()
+
+    def pca_fep(self,
+                length = None,
+                components = 2,
+                fontsize = 10,
+                dpi = 600,
+                components_plot = [1,2],
+                figsize = [5,5],
+                legend = True,
+                ticks = True,
+                bins = 50,
+                cmap = "jet",
+                colorrange = 50,
+                vmax = 25,
+                alpha = 0.8,
+                file = None):
+
+        colvars = [[] for _ in range(len(self.inputdir))]
+        colvars_pca = [[] for _ in range(len(self.inputdir))]
+        lengths = [[] for _ in range(len(self.inputdir))]
+        finalDf = [[] for _ in range(len(self.inputdir))]
+        w = [[] for _ in range(len(self.inputdir))]
+        weights_pca = [[] for _ in range (len(self.inputdir))]
+        
+        for i,f in enumerate(self.inputfile):
+            
+            if length is None:
+                colvars[i] = _readinputfile(f,self.common_angles)
+                lengths[i] = len(colvars[i]) 
+            else:
+                lengths[i] = length 
+                colvars[i] = _readinputfile(f,self.common_angles)
+                colvars[i] = colvars[i].iloc[::round(colvars[i].shape[0]/lengths[i]), :]
+            
+            colvars_pca[i] = pd.DataFrame({"index": colvars[i].index})
+            for a in self.common_angles:
+                colvars_pca[i].loc[:,"sin_{}".format(a)] = np.sin(colvars[i].loc[:,a])
+                colvars_pca[i].loc[:,"cos_{}".format(a)] = np.cos(colvars[i].loc[:,a])
+            colvars_pca[i] = colvars_pca[i].drop(columns = ["index"])
+
+        if len(self.inputdir) == 2:
+            colvar_pca = pd.concat([colvars_pca[0], colvars_pca[1]], axis=0)
+            conformer_pca = pd.concat([self.binary_compressed[0], self.binary_compressed[1]], axis=0)
+            l_start = [0, lengths[0]+1]
+            l_end = [lengths[0]+1, lengths[0]+lengths[1]+2]
+        elif len(self.inputdir) == 3:
+            colvar_pca = pd.concat([colvars_pca[0], colvars_pca[1], colvars_pca[2]], axis=0)
+            conformer_pca = pd.concat([self.binary_compressed[0], self.binary_compressed[1], self.binary_compressed[2]], axis=0)
+            l_start = [0, lengths[0]+1, lengths[0]+lengths[1]+2]
+            l_end = [lengths[0]+1, lengths[0]+lengths[1]+2, lengths[0]+lengths[1]+lengths[2]+3]
+        elif len(self.inputdir) == 4:
+            colvar_pca = pd.concat([colvars_pca[0], colvars_pca[1], colvars_pca[2], colvars_pca[3]], axis=0)
+            conformer_pca = pd.concat([self.binary_compressed[0], self.binary_compressed[1], self.binary_compressed[2], self.binary_compressed[3]], axis=0)
+            l_start = [0, lengths[0]+1, lengths[0]+lengths[1]+2, lengths[0]+lengths[1]+lengths[2]+3]
+            l_end = [lengths[0]+1, lengths[0]+lengths[1]+2, lengths[0]+lengths[1]+lengths[2]+3, lengths[0]+lengths[1]+lengths[2]+lengths[3]+4]    
+
+        if self.weights == None: 
+            # Choose number of principle components
+            pca = PCA(n_components=components)
+            # Compute PCA and transform into dataframe with target addition
+            principalComponents = pca.fit_transform(colvar_pca)
+        else:
+            for d in range(len(self.inputdir)):
+                w[d] = pd.read_csv(self.weights[d], names = ["weights"], header = 0)
+                n = len(colvar_pca.columns)
+                weights_pca[d] = pd.concat([w[d]] * (n+1), axis=1, ignore_index=True)
+                weights_pca[d] = pd.DataFrame(data = weights_pca[d], columns = np.linspace(0,n-1,n))
+            if len(self.inputdir) == 2:
+                weights_pca = pd.concat([weights_pca[0], weights_pca[1]], axis=0)
+            elif len(self.inputdir) == 3:
+                weights_pca = pd.concat([weights_pca[0], weights_pca[1], weights_pca[2]], axis=0)
+            elif len(self.inputdir) == 4:
+                weights_pca = pd.concat([weights_pca[0], weights_pca[1], weights_pca[2], weights_pca[3]], axis=0)
+            # Choose number of principle components
+            pca = WPCA(n_components=components)
+            # Compute PCA and transform into dataframe with target addition
+            principalComponents = pca.fit_transform(colvar_pca, weights = weights_pca)
+        # Choose number of principle components
+
+        principalDf = pd.DataFrame(data = principalComponents)
+        conformer_pca = conformer_pca.reset_index()
+        principalDf = pd.concat([principalDf, conformer_pca[['Conformer']]], axis = 1)
+
+        for d, l_s, l_e in zip(range(len(self.inputdir)),l_start,l_end):
+            finalDf[d] = principalDf.iloc[l_s:l_e,:]
+            H, xedges, yedges = np.histogram2d(finalDf[d].iloc[:,components_plot[0]-1], finalDf[d].iloc[:,components_plot[1]-1], bins=bins)
+    
+            np.seterr(divide='ignore')
+            RT = 2.479
+            F = - RT*np.log(H)
+            
+            F_min = F.min()
+            if F_min > 0:
+                F = F - F_min
+            elif F_min == 0:
+                print("Data is already shifted to 0 for its minimum value")
+            else:
+                F = F + abs(F_min)
+            
+            plt.rcParams['figure.dpi'] = dpi
+            plt.figure(figsize = (figsize))
+            
+            ax = plt.gca()
+            if ticks == False:
+                ax.axes.xaxis.set_visible(False)
+                ax.axes.yaxis.set_visible(False)
+            else:
+                pass
+                
+            ax.set_xlabel('Principal Component {}'.format(components_plot[0]), fontsize = fontsize)
+            ax.set_ylabel('Principal Component {}'.format(components_plot[1]), fontsize = fontsize)
+            
+            cp = plt.contourf(yedges[1:], xedges[1:], F.T, colorrange, vmax = vmax, cmap=cmap, alpha = alpha)
+            
+            if legend == True:
+                cbar = plt.colorbar(cp)
+                cbar.set_label("kJ/mol", fontsize = fontsize)
+            else:
+                pass
+                
+            if file is None:
+                pass
+            else:
+                plt.savefig(file, bbox_inches='tight')
+            plt.show()

@@ -4,3 +4,8 @@ docs/build
 GlyCONFORMER.egg-info
 dist
 build
+Compare_M5G0.ipynb
+Compare_M5G0/
+GlyCONFORMER_M5G0.ipynb
+GlyCONFORMER_M5G0_01_native.ipynb
+GlyCONFORMER_M5G0_02_D204A.ipynb
