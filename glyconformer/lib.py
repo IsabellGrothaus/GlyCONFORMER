@@ -17,6 +17,10 @@ import csv
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 from wpca import WPCA, EMPCA
+import warnings
+
+# Suppress FutureWarning messages
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
 class glyconformer:
@@ -212,7 +216,7 @@ class glyconformer:
             profmin_value = profile.iloc[profmin[0],0]
             p1 = profile.iloc[:profmin[0],:]
             p2 = profile.iloc[profmin[0]:,:]
-            p = p2.append([p1])
+            p = pd.concat([p2,p1])
             p = p.to_numpy()
 
             maxima = argrelextrema(p[:,1], np.greater, order=self.order_max)
@@ -652,7 +656,7 @@ class glyconformer:
 
         return namelist
 
-    def validate_fep(self):
+    def validate_fep(self): 
 
         """
         Function that plots free energy profiles with annotated minima and maxima.
