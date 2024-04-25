@@ -15,18 +15,162 @@ import matplotlib.ticker as ticker
 import importlib.resources
 import csv
 from sklearn.decomposition import PCA
-from sklearn.preprocessing import StandardScaler
 from wpca import WPCA, EMPCA
 import warnings
+import os 
 
 # Suppress FutureWarning messages
 warnings.simplefilter(action='ignore', category=FutureWarning)
+warnings.simplefilter(action='ignore', category=UserWarning)
 
+def _readinputfile(inputfile, angles):
+    """
+    Function reading a dataframe from file, using the self.inputfile.
+    """
+    try:
+        colvar = plumed.read_as_pandas(inputfile)
+    except:
+        colvar = pd.read_csv(inputfile, delim_whitespace=True)
+    finally:
+        colvar = colvar[angles]
+        
+    return colvar
 
-class glyconformer:
-    # Class variables
-    ## maybe add directory names ?
-    def __init__(self, inputfile, outputdir = "./", length = None, glycantype = None , angles = None, omega_angles = None, separator_index = None, separator = None, fepdir = None, order_max = None, order_min = None):
+def _readfeature(path, file):
+        """
+        Function reading a list from file.
+
+        Parameters
+        ----------
+        path, file : str
+            Name of the path + file to read in,
+            including file extension 
+
+        Returns
+        -------
+        list
+            Variable holding the list of strings
+        """
+
+        feature = importlib.resources.read_text(path, file)
+        feature = feature.split()
+
+        return feature
+
+def _readdict(path, file):
+        """
+        Function loading a dictionary from file.
+
+        Parameters
+        ----------
+        path, file : str
+            Name of the path + file to read in,
+            including file extension 
+
+        Returns
+        -------
+        dict
+            Variable holding the dictionary
+        """
+    
+        with importlib.resources.open_text(path, file) as f:
+            data = f.read()
+        dict = json.loads(data)
+    
+        return dict 
+def _readseparator(path, file):
+        """
+        Function reading the separator information from file as lists.
+
+        Parameters
+        ----------
+        path, file : str
+            Name of the path + file to read in,
+            including file extension 
+
+        Returns
+        -------
+        index
+        sep
+            Variables holding the lists with the separator index and label
+        """
+
+        index = []
+        sep = []
+        with importlib.resources.open_text(path, file) as f:
+            reader = csv.reader(f, delimiter=' ')
+            for row in reader:
+                index.append(int(row[0]))
+                sep.append(str(row[1]))
+        return index, sep
+
+def _vertical_conformer_string(namelist):
+    """
+    Function that converts the conform string from a 
+    horizontal format to a vertical one.
+    Parameters
+    ----------
+    namelist : str
+        List of conformer strings 
+    Returns
+    -------
+    namelist_v : str
+        Conformer strings as list in a vertical format
+    """
+    namelist_v = []
+    for i in range(len(namelist)):
+        res = ''
+        for j,ele in enumerate(namelist[i]):
+            if j in (range(2,1000,3)):
+                res += ele + "\n"
+            else:
+                res += ele
+        namelist_v += [res]
+    return namelist_v
+def _include_branch_conformer_string(namelist, branches, features):
+    """
+    Function that inserts branch separators and replaces 
+    labels by dots in the conform strings.
+    Parameters
+    ----------
+    namelist : str
+        List of conformer strings 
+    branches : str
+        List of branch names present in the glycan
+    features : str
+        List of features
+    Returns
+    -------
+    namelist : str
+        List of conformer strings with branch separators 
+        and repetative labels exchange by dots
+    """
+    for i in range(1,len(namelist)):
+        for j,k in zip(range(0,len(features)*3,3),range(3,len(features)*3+1,3)):
+            if namelist[i][j:k] == namelist[0][j:k]:
+                newname = namelist[i][:j] + " • " + namelist[i][k:]
+                namelist[i] = newname
+            else: 
+                pass 
+        # Limitation: Can only replace branch separators which do occur max. twice
+        for b in branches:
+            index = namelist[0].find(b)
+            newbranch = namelist[i][:index] + "───" + namelist[i][index+3:]
+            namelist[i] = newbranch
+        for b in branches:
+            rindex = namelist[0].rfind(b)
+            if rindex == "-1":
+                pass
+            else:
+                rnewbranch = namelist[i][:rindex] + "───" + namelist[i][rindex+3:]
+                namelist[i] = rnewbranch
+    return namelist
+
+class glyconformer():
+
+    def __init__(self, inputfile=None, outputdir="./", length=None, glycantype=None,
+                 angles=None, omega_angles=None, separator_index=None, 
+                 separator=None, fepdir=None, order_max=None, order_min=None):
         # Instance variables
         """
         Initialize object's attributes, aka setting variables.
@@ -60,14 +204,12 @@ class glyconformer:
         Returns
         -------
         """
-        
-        self.inputfile = inputfile
-        self.outputdir = outputdir 
-        
-        #attribute reading mainly depends on if a glycantype is specified and whether
-        #information are read from the LIBRARY_GLYCANS or from user input variables. 
+        # attribute reading mainly depends on if a glycantype is specified and 
+        # whether information are read from the LIBRARY_GLYCANS or from 
+        # user input variables. 
        
         if glycantype is None:
+            self.inputfile = inputfile
             self.angles = angles
             self.omega_angles = omega_angles
             self.separator_index = separator_index
@@ -75,110 +217,29 @@ class glyconformer:
             self.fepdir = fepdir
             self.order_max = order_max
             self.order_min = order_min
-            self.maxima,self.minima = self._find_min_max()    
+            self.maxima, self.minima = self._find_min_max()    
         else:
             self.glycantype = glycantype
-            self.angles = self._readfeature("LIBRARY_GLYCANS.{}".format(self.glycantype),"angles.dat")
-            self.omega_angles = self._readfeature("LIBRARY_GLYCANS.{}".format(self.glycantype),"omega_angles.dat")
-            self.separator_index, self.separator = self._readseparator("LIBRARY_GLYCANS.{}".format(self.glycantype),"separator.dat")
-            self.fepdir = "LIBRARY_GLYCANS/{}".format(self.glycantype)
-            self.minima = self._readdict("LIBRARY_GLYCANS.{}".format(self.glycantype),"minima.dat")
-            self.maxima = self._readdict("LIBRARY_GLYCANS.{}".format(self.glycantype),"maxima.dat")
+            self.inputfile = "TUTORIAL/{}_example/{}_angles.dat".format(self.glycantype,self.glycantype)
+
+            self.angles = _readfeature("LIBRARY_GLYCANS.{}".format(self.glycantype), "angles.dat")
+            self.omega_angles = _readfeature("LIBRARY_GLYCANS.{}".format(self.glycantype), "omega_angles.dat")
+            self.separator_index, self.separator = _readseparator("LIBRARY_GLYCANS.{}".format(self.glycantype), "separator.dat")
+            self.fepdir = "LIBRARY_GLYCANS.{}".format(self.glycantype)
+            self.minima = _readdict("LIBRARY_GLYCANS.{}".format(self.glycantype), "minima.dat")
+            self.maxima = _readdict("LIBRARY_GLYCANS.{}".format(self.glycantype), "maxima.dat")
             
         self.label = self._label_min()
         
-        #read inputfile
+        # read inputfile
         
         if length is None:
-            self.colvar = self._readinputfile()
+            self.colvar = _readinputfile(self.inputfile, self.angles)
             self.length = len(self.colvar) 
         else:
             self.length = length 
-            colvar = self._readinputfile()
+            colvar = _readinputfile(self.inputfile, self.angles)
             self.colvar = colvar.iloc[::round(colvar.shape[0]/self.length), :]
-            
-    def _readinputfile(self):
-        """
-        Function reading a dataframe from file, using the self.inputfile.
-        """
-
-        try:
-            colvar = plumed.read_as_pandas(self.inputfile)
-        except:
-            colvar = pd.read_csv(self.inputfile, delim_whitespace=True)
-        finally:
-            colvar = colvar[self.angles]
-            
-        return colvar
-    
-    def _readfeature(self, path, file):
-        """
-        Function reading a list from file.
-
-        Parameters
-        ----------
-        path, file : str
-            Name of the path + file to read in,
-            including file extension 
-
-        Returns
-        -------
-        list
-            Variable holding the list of strings
-        """
-
-        feature = importlib.resources.read_text(path,file)
-        feature = feature.split()
-
-        return feature
-
-    def _readdict(self, path, file):
-        """
-        Function loading a dictionary from file.
-
-        Parameters
-        ----------
-        path, file : str
-            Name of the path + file to read in,
-            including file extension 
-
-        Returns
-        -------
-        dict
-            Variable holding the dictionary
-        """
-    
-        with importlib.resources.open_text(path,file) as f:
-            data = f.read()
-        dict = json.loads(data)
-    
-        return dict 
-    
-    def _readseparator(self, path, file):
-        """
-        Function reading the separator information from file as lists.
-
-        Parameters
-        ----------
-        path, file : str
-            Name of the path + file to read in,
-            including file extension 
-
-        Returns
-        -------
-        index
-        sep
-            Variables holding the lists with the separator index and label
-        """
-
-        index = []
-        sep = []
-        with importlib.resources.open_text(path,file) as f:
-            reader = csv.reader(f, delimiter=' ')
-            for row in reader:
-                index.append(int(row[0]))
-                sep.append(str(row[1]))
-        return index, sep
     
     def _find_min_max(self):
         """ 
@@ -211,47 +272,46 @@ class glyconformer:
         minima_dict = {}
 
         for f in self.angles:
-            profile = pd.read_csv("{}/fes_{}.dat".format(self.fepdir, f), delim_whitespace=True, names = ["x","y"])
+            profile = pd.read_csv("{}/fes_{}.dat".format(self.fepdir, f), 
+                                  delim_whitespace=True, names=["x", "y"])
             profmin = profile.index[profile['y'] == 0.0]
-            profmin_value = profile.iloc[profmin[0],0]
-            p1 = profile.iloc[:profmin[0],:]
-            p2 = profile.iloc[profmin[0]:,:]
-            p = pd.concat([p2,p1])
+            profmin_value = profile.iloc[profmin[0], 0]
+            p1 = profile.iloc[:profmin[0], :]
+            p2 = profile.iloc[profmin[0]:, :]
+            p = pd.concat([p2, p1])
             p = p.to_numpy()
 
-            maxima = argrelextrema(p[:,1], np.greater, order=self.order_max)
-            minima = argrelextrema(p[:,1], np.less, order=self.order_min)
+            maxima = argrelextrema(p[:, 1], np.greater, order=self.order_max)
+            minima = argrelextrema(p[:, 1], np.less, order=self.order_min)
 
             if len(maxima[0]) == 0:
                 maxima_dict["{}".format(f)] = [0]
             elif len(maxima[0]) == 1:
-                maxima_dict["{}".format(f)] = [p[maxima[0][0],[0]].item()]
+                maxima_dict["{}".format(f)] = [p[maxima[0][0], [0]].item()]
             elif len(maxima[0]) == 2:
-                x = [p[maxima[0][0],[0]].item(), p[maxima[0][1],[0]].item()]
+                x = [p[maxima[0][0], [0]].item(), p[maxima[0][1], [0]].item()]
                 x.sort()
                 maxima_dict["{}".format(f)] = x
             elif len(maxima[0]) == 3:
-                x = [p[maxima[0][0],[0]].item(), p[maxima[0][1],[0]].item(), p[maxima[0][2],[0]].item()]
+                x = [p[maxima[0][0], [0]].item(), p[maxima[0][1], [0]].item(), p[maxima[0][2], [0]].item()]
                 x.sort()
                 maxima_dict["{}".format(f)] = x
-
-
 
             if len(minima[0]) == 0:
                 minima_dict["{}".format(f)] = [profmin_value]
 
             elif len(minima[0]) == 1:   
-                x = [profmin_value, p[minima[0][0],[0]].item()]
+                x = [profmin_value, p[minima[0][0], [0]].item()]
                 x.sort()
 
                 test = -3.5 <= x[0] <= maxima_dict["{}".format(f)][0]
 
                 if test == True:                                  
-                    x = [x[0],x[1],x[0]] 
+                    x = [x[0], x[1], x[0]] 
                     minima_dict["{}".format(f)] = x
 
                 else:
-                    x = [x[1],x[0],x[1]] 
+                    x = [x[1], x[0], x[1]] 
                     minima_dict["{}".format(f)] = x    
 
 
@@ -338,7 +398,6 @@ class glyconformer:
 
         if self.weights == None:
             self.binary, self.binary_compressed, self.count, self.angles_separator = self._create_binary()
-            self._perform_block_averages()
         else:
             self.binary, self.binary_compressed, self.count, self.angles_separator = self._create_binary()
 
@@ -360,10 +419,10 @@ class glyconformer:
             List of branches present in the processed glycan structure
         """
     
-        colvar = self._readinputfile()
+        colvar = _readinputfile(self.inputfile, self.angles)
         colvar = colvar.iloc[::round(colvar.shape[0]/self.length), :]
 
-        binary = self._readinputfile()
+        binary = _readinputfile(self.inputfile, self.angles)
         binary = binary.iloc[::round(binary.shape[0]/self.length), :]
     
         for f in self.angles:
@@ -457,36 +516,116 @@ class glyconformer:
         count = self.count.set_index('Conformer')
         step = len(self.binary)/10
 
-        clear1 = np.arange(0,len(self.binary), step)
+        self.blockdata = []
+
+        clear1 = np.arange(0, len(self.binary), step)
         clear2 = np.arange(step, len(self.binary) + step, step)
-        clear1 = list(map(int, clear1))
-        clear2 = list(map(int, clear2))
+        clear1 = clear1.astype(int)
+        clear2 = clear2.astype(int)
 
-        for i,j,k in zip(range(1,11), clear1, clear2):
-            binary_short = self.binary.iloc[j:k,:]
-            bbinary_short = binary_short.groupby(features).size().to_frame(name = 'Count').reset_index()
-            norm = len(binary_short)
-            p = (bbinary_short.iloc[:,len(features)] / norm)
-            bbinary_short["Probability"] = p
-            bbinary_short['Conformer'] = bbinary_short[bbinary_short.columns[0:len(features)]].apply(lambda x: ''.join(x.dropna().astype(str)),axis=1)
-            bbinary_short = bbinary_short.drop(bbinary_short.columns[0:len(features)], axis=1)
+        for i, j, k in zip(range(1, 11), clear1, clear2):
+            binary_short = self.binary.iloc[j:k]
+            bbinary_short = binary_short.groupby(features).size().reset_index(name='Count')
+            bbinary_short['Probability'] = bbinary_short['Count'] / len(binary_short)
+            bbinary_short['Conformer'] = bbinary_short[features].apply(lambda x: ''.join(x.dropna().astype(str)), axis=1)
+            
+            # Keep only the relevant columns
+            bbinary_short = bbinary_short[['Conformer', 'Count', 'Probability']]
+            
             # Join both dataframes taking 'Conformer' as key column for comparison
-            bbinary_short = bbinary_short.set_index('Conformer')
-            bbbinary_short = bbinary_short.join(count,how='outer',lsuffix='_block', rsuffix='_total')
-            bbbinary_short = bbbinary_short.round(6)
-            bbbinary_short = bbbinary_short.fillna(0.0)
-            bbbinary_short = bbbinary_short.reset_index()
+            bbinary_short = bbinary_short.set_index('Conformer').join(count, how='outer', lsuffix='_block', rsuffix='_total')
+            bbinary_short = bbinary_short.round(6).fillna(0.0).reset_index()
+            self.blockdata.append(bbinary_short)
+            
+        N = 1
+        average_block = self.blockdata[0]['Probability'].copy()  # Assuming 'Probability' is the column name based on the earlier discussion
+        average2_block = self.blockdata[0]['Probability'] ** 2
+        for histn in self.blockdata[1:]:
+            N += 1
+            average_block += histn['Probability']
+            average2_block += histn['Probability'] ** 2
+        average_block /= N
+        average = pd.DataFrame({'Prob': average_block})
+        error = pd.DataFrame({'Error': average2_block})
 
-            # Print partially data sorted to file
-            bbbinary_short.to_csv("{}/Cluster_conformer{}.dat".format(self.outputdir,i), sep= " ", header=True)
+        return average, error, N
+
+    def _bootstrap(self, n_iterations=1000):
+        # Extract the single column of data
+        data = self.binary_compressed.loc[:, "Conformer"]
+        
+        # Dictionary to store the results for each unique string
+        unique_strings = data.unique()
+        bootstrap_results = {string: [] for string in unique_strings}
+        
+        for _ in range(n_iterations):
+            # Sample with replacement from the original data
+            sample = data.sample(n=len(data), replace=True)
+            
+            # Count occurrences and calculate probability for each unique string
+            counts = sample.value_counts(normalize=True)
+            
+            # Store probabilities for each string
+            for string in unique_strings:
+                if string in counts:
+                    bootstrap_results[string].append(counts[string])
+                else:
+                    bootstrap_results[string].append(0)  # Add zero if the string didn't appear in the sample
+
+        # Calculate average probabilities and standard deviations
+        averages = {string: np.mean(probabilities) for string, probabilities in bootstrap_results.items()}
+        errors = {string: np.std(probabilities) for string, probabilities in bootstrap_results.items()}
+        
+        # Creating DataFrames for averages and errors
+        average = pd.DataFrame(list(averages.items()), columns=['Conformer', 'Prob'])
+        error = pd.DataFrame(list(errors.items()), columns=['Conformer', 'Error'])
+
+        return average, error
     
-    def plot(self,
-             threshold=2,
-             ymax=100, 
-             fontsize=15, 
-             colors=["#173c4d","#146b65","#4e9973","#a7c09f","#dfa790","#c76156","#9a2b4c","#600b4a"],
-             dpi=300,
-             file=None):
+    def _order_conformer(self, average, error, threshold):
+
+        average = average.drop(average[average['Prob'] < threshold/100 ].index)
+        average = average.sort_values(by="Prob", ascending=False)
+        indexlist = average.index.tolist()
+        filtered_conformer = self.blockdata[0].filter(indexlist, axis = 0)
+        namelist = filtered_conformer['Conformer'].tolist()
+        name_list = _include_branch_conformer_string(namelist, self.branches, self.angles_separator)
+        name_list = _vertical_conformer_string(name_list)
+        error = error.filter(indexlist, axis = 0)
+
+        return name_list, average, error
+
+    def _plot_distribution(self, name_list, colors, dpi, ymax, fontsize, file, average, error):
+        
+        pos_list = np.arange(len(name_list))
+
+        plt.rcParams['figure.dpi'] = dpi
+        ax = plt.axes()
+        ax.xaxis.set_major_locator(ticker.FixedLocator((pos_list)))
+        ax.xaxis.set_major_formatter(ticker.FixedFormatter((name_list)))   
+        bar = plt.bar(pos_list, average.Prob * 100, yerr = error * 100)
+        for i in range(len(pos_list)):
+            bar[i].set_color(colors[i])
+        plt.ylim(0,ymax)
+        plt.xticks(fontsize = fontsize)
+        plt.yticks(fontsize = fontsize)
+        plt.xlabel("Conformer", fontsize = fontsize)
+        plt.ylabel('Probability [%]', fontsize = fontsize)
+        
+        if file is None:
+            pass
+        else:
+            plt.savefig(file, bbox_inches='tight')
+        plt.show()
+
+    def distribution(self,
+                     threshold=2,
+                     ymax=100, 
+                     fontsize=15, 
+                     colors=["#173c4d","#146b65","#4e9973","#a7c09f","#dfa790","#c76156","#9a2b4c","#600b4a"],
+                     dpi=300,
+                     file=None,
+                     n_iterations=1000):
         """
         Plots a bar graph of the conformer density function.
 
@@ -513,148 +652,17 @@ class glyconformer:
         Returns
         -------
         """
-        if self.weights == None:
-            hist1 = pd.read_csv("{}/Cluster_conformer1.dat".format(self.outputdir), delim_whitespace=True, header=0, names = ["Index", "Conformer", "Count_partial", "Prob", "Count_full"] )
-            N, average, average2 = 1, hist1.iloc[:,3], hist1.iloc[:,3]*hist1.iloc[:,3]
-            for i in range(2,11): 
-                histn = pd.read_csv("{}/Cluster_conformer{}.dat".format(self.outputdir, i), delim_whitespace=True, header=0, names = ["Index", "Conformer", "Count_partial", "Prob", "Count_full"])
-                N, average, average2 = N + 1, average + histn.iloc[:,3], average2 + histn.iloc[:,3]*histn.iloc[:,3]
-    
-            average = pd.DataFrame(average/N, columns=['Prob'])
-            average = average.drop(average[average['Prob'] < threshold/100 ].index)
-            average = average.sort_values(by='Prob',ascending=False)
-            indexlist = average.index.tolist()
-    
-            hist = pd.read_csv("{}/Cluster_conformer1.dat".format(self.outputdir), names = ["Index", "Conformer", "Count_partial", "Prob", "Count_full"], sep = " ", dtype = str, header=0)
-            hist = hist.filter(indexlist, axis = 0)
-
-            namelist = hist['Conformer'].tolist()
-            name_list = self._include_branch_conformer_string(namelist, self.branches, self.angles_separator)
-            name_list = self._vertical_conformer_string(name_list)
-            average2 = average2.to_frame()
-            average2.columns = ["Error"]
-            average2 = average2.filter(indexlist, axis = 0)
-    
-            # Final variances
-            var = (N/(N-1))*( average2.Error / N - average.Prob*average.Prob ) 
-            # Errors
+        if self.weights is None:
+            average, error, N = self._perform_block_averages()
+            name_list, average, error = self._order_conformer(average, error, threshold) 
+            var = (N/(N-1))*( (error.Error / N) - average.Prob*average.Prob ) 
             error = np.sqrt( var / N )
-    
-            pos_list = np.arange(len(name_list))
-    
-            colors = colors
-            plt.rcParams['figure.dpi'] = dpi
-            ax = plt.axes()
-            ax.xaxis.set_major_locator(ticker.FixedLocator((pos_list)))
-            ax.xaxis.set_major_formatter(ticker.FixedFormatter((name_list)))   
-            bar = plt.bar(pos_list, average.Prob * 100, yerr = error * 100)
-            for i in range(len(pos_list)):
-                bar[i].set_color(colors[i])
-            plt.ylim(0,ymax)
-            plt.xticks(fontsize = fontsize)
-            plt.yticks(fontsize = fontsize)
-            plt.xlabel("Conformer", fontsize = fontsize)
-            plt.ylabel('Probability [%]', fontsize = fontsize)
-            
-            if file is None:
-                pass
-            else:
-                plt.savefig(file, bbox_inches='tight')
-            plt.show()
-            
+            self._plot_distribution(name_list, colors, dpi, ymax, fontsize, file, average, error)
+       
         else:
-            count = self.count.drop(self.count[self.count['Count'] < threshold/100 ].index)
-            indexlist = count.index.tolist()
-            namelist = count['Conformer'].tolist()
-            name_list = _include_branch_conformer_string(namelist, self.branches, self.angles_separator)
-            name_list = _vertical_conformer_string(name_list)
-            pos_list = np.arange(len(name_list))
-            colors = colors
-            plt.rcParams['figure.dpi'] = dpi
-            ax = plt.axes()
-            ax.xaxis.set_major_locator(ticker.FixedLocator((pos_list)))
-            ax.xaxis.set_major_formatter(ticker.FixedFormatter((name_list)))   
-            bar = plt.bar(pos_list, count.Count * 100)
-            for i in range(len(pos_list)):
-                bar[i].set_color(colors[i])
-            plt.ylim(0,ymax)
-            plt.xticks(fontsize = fontsize)
-            plt.yticks(fontsize = fontsize)
-            plt.xlabel("Conformer", fontsize = fontsize)
-            plt.ylabel('Probability [%]', fontsize = fontsize)
-            plt.show()
-    
-    def _vertical_conformer_string(self, namelist):
-        """
-        Function that converts the conform string from a 
-        horizontal format to a vertical one.
-
-        Parameters
-        ----------
-        namelist : str
-            List of conformer strings 
-
-        Returns
-        -------
-        namelist_v : str
-            Conformer strings as list in a vertical format
-        """
-
-        namelist_v = []
-        for i in range(len(namelist)):
-            res = ''
-            for j,ele in enumerate(namelist[i]):
-                if j in (range(2,1000,3)):
-                    res += ele + "\n"
-                else:
-                    res += ele
-            namelist_v += [res]
-        return namelist_v
-
-    def _include_branch_conformer_string(self, namelist, branches, features):
-        """
-        Function that inserts branch separators and replaces 
-        labels by dots in the conform strings.
-
-        Parameters
-        ----------
-        namelist : str
-            List of conformer strings 
-        branches : str
-            List of branch names present in the glycan
-        features : str
-            List of features
-
-        Returns
-        -------
-        namelist : str
-            List of conformer strings with branch separators 
-            and repetative labels exchange by dots
-        """
-
-        for i in range(1,len(namelist)):
-
-            for j,k in zip(range(0,len(features)*3,3),range(3,len(features)*3+1,3)):
-                if namelist[i][j:k] == namelist[0][j:k]:
-                    newname = namelist[i][:j] + " • " + namelist[i][k:]
-                    namelist[i] = newname
-                else: 
-                    pass 
-            # Limitation: Can only replace branch separators which do occur max. twice
-            for b in branches:
-                index = namelist[0].find(b)
-                newbranch = namelist[i][:index] + "───" + namelist[i][index+3:]
-                namelist[i] = newbranch
-
-            for b in branches:
-                rindex = namelist[0].rfind(b)
-                if rindex == "-1":
-                    pass
-                else:
-                    rnewbranch = namelist[i][:rindex] + "───" + namelist[i][rindex+3:]
-                    namelist[i] = rnewbranch
-
-        return namelist
+            average, error = self._bootstrap(n_iterations)
+            name_list, average, error = self._order_conformer(average, error, threshold) 
+            self._plot_distribution(name_list, colors, dpi, ymax, fontsize, file, count=count)
 
     def validate_fep(self): 
 
@@ -725,7 +733,6 @@ class glyconformer:
                            dpi = 300,
                            ymax = 100,
                            file=None):
-        
         #List top conformers
         top = []
         for r in range(0,ranks):
@@ -777,9 +784,6 @@ class glyconformer:
                        dpi = 600,
                        ymax = 100,
                        file = None):
-            
-
-
         #List top conformers
         top = []
         for r in range(0,ranks):
@@ -1074,85 +1078,6 @@ class glyconformer:
         else:
             plt.savefig(file, bbox_inches='tight')
         plt.show()
-###################################################
-#General functions that are shared between classes
-def _vertical_conformer_string(namelist):
-    """
-    Function that converts the conform string from a 
-    horizontal format to a vertical one.
-    Parameters
-    ----------
-    namelist : str
-        List of conformer strings 
-    Returns
-    -------
-    namelist_v : str
-        Conformer strings as list in a vertical format
-    """
-    namelist_v = []
-    for i in range(len(namelist)):
-        res = ''
-        for j,ele in enumerate(namelist[i]):
-            if j in (range(2,1000,3)):
-                res += ele + "\n"
-            else:
-                res += ele
-        namelist_v += [res]
-    return namelist_v
-    
-def _include_branch_conformer_string(namelist, branches, features):
-    """
-    Function that inserts branch separators and replaces 
-    labels by dots in the conform strings.
-    Parameters
-    ----------
-    namelist : str
-        List of conformer strings 
-    branches : str
-        List of branch names present in the glycan
-    features : str
-        List of features
-    Returns
-    -------
-    namelist : str
-        List of conformer strings with branch separators 
-        and repetative labels exchange by dots
-    """
-    for i in range(1,len(namelist)):
-        for j,k in zip(range(0,len(features)*3,3),range(3,len(features)*3+1,3)):
-            if namelist[i][j:k] == namelist[0][j:k]:
-                newname = namelist[i][:j] + " • " + namelist[i][k:]
-                namelist[i] = newname
-            else: 
-                pass 
-        # Limitation: Can only replace branch separators which do occur max. twice
-        for b in branches:
-            index = namelist[0].find(b)
-            newbranch = namelist[i][:index] + "───" + namelist[i][index+3:]
-            namelist[i] = newbranch
-        for b in branches:
-            rindex = namelist[0].rfind(b)
-            if rindex == "-1":
-                pass
-            else:
-                rnewbranch = namelist[i][:rindex] + "───" + namelist[i][rindex+3:]
-                namelist[i] = rnewbranch
-    return namelist
-
-def _readinputfile(inputfile, angles):
-    """
-    Function reading a dataframe from file, using the self.inputfile.
-    """
-    try:
-        colvar = plumed.read_as_pandas(inputfile)
-    except:
-        colvar = pd.read_csv(inputfile, delim_whitespace=True)
-    finally:
-        colvar = colvar[angles]
-        
-    return colvar
-
-##########################################
 
 class glycompare:
     # Class variables
