@@ -1,6 +1,6 @@
 __author__ = "Isabell Louise Grothaus"
 __license__ = "GNU GENERAL PUBLIC LICENSE, Version 3"
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 __email__ = "grothaus@uni-bremen.de"
 __status__ = "Development"
 
@@ -166,11 +166,11 @@ def _include_branch_conformer_string(namelist, branches, features):
                 namelist[i] = rnewbranch
     return namelist
 
-class glyconformer():
+class Glyconformer():
 
-    def __init__(self, inputfile=None, outputdir="./", length=None, glycantype=None,
+    def __init__(self, inputfile=None, length=None, glycantype=None,
                  angles=None, omega_angles=None, separator_index=None, 
-                 separator=None, fepdir=None, order_max=None, order_min=None):
+                 separator=None, fepdir=None, order_max=None, order_min=None, weights=None):
         # Instance variables
         """
         Initialize object's attributes, aka setting variables.
@@ -179,8 +179,6 @@ class glyconformer():
         ----------
         inputfile: str
             Name of the file to read in, including file extension 
-        outputdir: str
-            Path to output directory, where created files are stored
         length: int
             Length to which the input file should be reduced
             Default: lenght is read from input file
@@ -217,7 +215,8 @@ class glyconformer():
             self.fepdir = fepdir
             self.order_max = order_max
             self.order_min = order_min
-            self.maxima, self.minima = self._find_min_max()    
+            self.maxima, self.minima = self._find_min_max() 
+            self.weights = weights
         else:
             self.glycantype = glycantype
             self.inputfile = "TUTORIAL/{}_example/{}_angles.dat".format(self.glycantype,self.glycantype)
@@ -225,12 +224,12 @@ class glyconformer():
             self.angles = _readfeature("LIBRARY_GLYCANS.{}".format(self.glycantype), "angles.dat")
             self.omega_angles = _readfeature("LIBRARY_GLYCANS.{}".format(self.glycantype), "omega_angles.dat")
             self.separator_index, self.separator = _readseparator("LIBRARY_GLYCANS.{}".format(self.glycantype), "separator.dat")
-            self.fepdir = "LIBRARY_GLYCANS.{}".format(self.glycantype)
+            self.fepdir = "LIBRARY_GLYCANS/{}".format(self.glycantype)
             self.minima = _readdict("LIBRARY_GLYCANS.{}".format(self.glycantype), "minima.dat")
             self.maxima = _readdict("LIBRARY_GLYCANS.{}".format(self.glycantype), "maxima.dat")
-            
+            self.weights = None
+
         self.label = self._label_min()
-        
         # read inputfile
         
         if length is None:
@@ -240,6 +239,8 @@ class glyconformer():
             self.length = length 
             colvar = _readinputfile(self.inputfile, self.angles)
             self.colvar = colvar.iloc[::round(colvar.shape[0]/self.length), :]
+
+        self.binary, self.binary_compressed, self.count, self.angles_separator = self._create_binary()
     
     def _find_min_max(self):
         """ 
@@ -379,27 +380,6 @@ class glyconformer():
                         name_dicts[i][f] = 'none'
         label_dict = {k: tuple(d.get(k, 'none') for d in name_dicts) for k in set().union(*name_dicts)}
         return label_dict
-    
-    def run(self, weights = None):
-        """
-        Function that converts the torsion angle values into corresponding letters, counts the occurance of individual conformer strings and assesses statistics by performing block averages.
-        
-        Parameters
-        ----------
-
-        Returns
-        ------
-        binary: dataframe
-            shape of inputfile, with letters replacing the torsion angle values and including separators
-        count: dataframe
-            counting how often a conformer string occured
-        """
-        self.weights = weights
-
-        if self.weights == None:
-            self.binary, self.binary_compressed, self.count, self.angles_separator = self._create_binary()
-        else:
-            self.binary, self.binary_compressed, self.count, self.angles_separator = self._create_binary()
 
     def _create_binary(self):
         """
@@ -466,7 +446,6 @@ class glyconformer():
 
         if self.weights == None:
             pass
-            
         else:
             w = pd.read_csv(self.weights, names = ["weights"], header = 0)
             binary_w = pd.concat([binary_compressed, w], axis=1)
@@ -506,9 +485,6 @@ class glyconformer():
         count: mixed
             Pandas dataframe with the first column for the conformer string 
             and the second column for the occurance of the conformer (counts)
-        outputdir: str
-            Directory name to store the conformer files in
-
         Returns
         -------
         """
@@ -545,12 +521,12 @@ class glyconformer():
             average_block += histn['Probability']
             average2_block += histn['Probability'] ** 2
         average_block /= N
-        average = pd.DataFrame({'Prob': average_block})
-        error = pd.DataFrame({'Error': average2_block})
+        average = pd.DataFrame({'Conformer': self.blockdata[0]["Conformer"], 'Prob': average_block})
+        error = pd.DataFrame({'Conformer': self.blockdata[0]["Conformer"], 'Error': average2_block})
 
         return average, error, N
 
-    def _bootstrap(self, n_iterations=1000):
+    def _bootstrap(self, n_iterations):
         # Extract the single column of data
         data = self.binary_compressed.loc[:, "Conformer"]
         
@@ -587,8 +563,8 @@ class glyconformer():
         average = average.drop(average[average['Prob'] < threshold/100 ].index)
         average = average.sort_values(by="Prob", ascending=False)
         indexlist = average.index.tolist()
-        filtered_conformer = self.blockdata[0].filter(indexlist, axis = 0)
-        namelist = filtered_conformer['Conformer'].tolist()
+        filtered_conformer = average["Conformer"].filter(indexlist, axis = 0)
+        namelist = filtered_conformer.tolist()
         name_list = _include_branch_conformer_string(namelist, self.branches, self.angles_separator)
         name_list = _vertical_conformer_string(name_list)
         error = error.filter(indexlist, axis = 0)
@@ -662,7 +638,8 @@ class glyconformer():
         else:
             average, error = self._bootstrap(n_iterations)
             name_list, average, error = self._order_conformer(average, error, threshold) 
-            self._plot_distribution(name_list, colors, dpi, ymax, fontsize, file, count=count)
+            error = error.Error
+            self._plot_distribution(name_list, colors, dpi, ymax, fontsize, file, average, error)
 
     def validate_fep(self): 
 
@@ -672,6 +649,7 @@ class glyconformer():
         Evaluation of how good the identification of minima and maxima worked.
         -------
         """
+        # implement plotting also of reweighted torsion FEPs
 
         y0 = 0
         y1 = 40
@@ -733,45 +711,48 @@ class glyconformer():
                            dpi = 300,
                            ymax = 100,
                            file=None):
-        #List top conformers
-        top = []
-        for r in range(0,ranks):
-            top.append(self.count.loc[r, "Conformer"])
-        #Count occurrance of top conformers
-        occurrences = [[] for _ in range(len(top))]
-        indices = [[] for _ in range(len(top))]
-        for j, conf in enumerate(top):
-            c = 0
-            for i in self.binary_compressed.index:
-                if self.binary_compressed.loc[i, "Conformer"] == conf: 
-                    c = c + 1
-                    occurrences[j].append((c) / (i + 1))
-                    indices[j].append(i)
-                else:
-                    occurrences[j].append((c) / (i + 1))
-                    indices[j].append(i)
-                    
-            occurrences[j][:] = [x * 100 for x in occurrences[j]]
-            indices[j][:] = [x * (simulation_length/self.length) for x in indices[j]]
-        #Plot
-        plt.figure()
-        plt.rcParams['figure.dpi'] = dpi
-        plt.xlabel("Time [ns]", fontsize=fontsize)
-        plt.ylabel("Probability [%]", fontsize=fontsize)
-        plt.tick_params(axis='both', which='major', labelsize=fontsize)
-        
-        for j,l,c,line in zip(range(0,len(top)), label, color, linestyle):
-            plt.plot(indices[j], occurrences[j], label = l, color = c, linestyle = line)
-        
-        plt.legend(fontsize = fontsize)
-        plt.ylim(0,ymax)
-        plt.plot()
+        if self.weights == None:
+            #List top conformers
+            top = []
+            for r in range(0,ranks):
+                top.append(self.count.loc[r, "Conformer"])
+            #Count occurrance of top conformers
+            occurrences = [[] for _ in range(len(top))]
+            indices = [[] for _ in range(len(top))]
+            for j, conf in enumerate(top):
+                c = 0
+                for i in self.binary_compressed.index:
+                    if self.binary_compressed.loc[i, "Conformer"] == conf: 
+                        c = c + 1
+                        occurrences[j].append((c) / (i + 1))
+                        indices[j].append(i)
+                    else:
+                        occurrences[j].append((c) / (i + 1))
+                        indices[j].append(i)
+                        
+                occurrences[j][:] = [x * 100 for x in occurrences[j]]
+                indices[j][:] = [x * (simulation_length/self.length) for x in indices[j]]
+            #Plot
+            plt.figure()
+            plt.rcParams['figure.dpi'] = dpi
+            plt.xlabel("Time [ns]", fontsize=fontsize)
+            plt.ylabel("Probability [%]", fontsize=fontsize)
+            plt.tick_params(axis='both', which='major', labelsize=fontsize)
+            
+            for j,l,c,line in zip(range(0,len(top)), label, color, linestyle):
+                plt.plot(indices[j], occurrences[j], label = l, color = c, linestyle = line)
+            
+            plt.legend(fontsize = fontsize)
+            plt.ylim(0,ymax)
+            plt.plot()
 
-        if file is None:
-            pass
+            if file is None:
+                pass
+            else:
+                plt.savefig(file, bbox_inches='tight')
+            plt.show()
         else:
-            plt.savefig(file, bbox_inches='tight')
-        plt.show()
+            print("Cumulative average can not be computed for weighted data")
 
     def moving_average(self,
                        simulation_length,
@@ -784,52 +765,149 @@ class glyconformer():
                        dpi = 600,
                        ymax = 100,
                        file = None):
-        #List top conformers
-        top = []
-        for r in range(0,ranks):
-            top.append(self.count.loc[r, "Conformer"])
-        
-        #Count rolling occurrance of top conformers
-        occurrences = [[] for _ in range(len(top))]
-        
-        for j, conf in enumerate(top):
-            occurrences[j] = list(self.binary_compressed.loc[:,"Conformer"])
-        
-            for i in range(0, len(occurrences[j])):
-                if occurrences[j][i] == conf:
-                    pass
-                else:
-                    occurrences[j][i] = np.nan
-                    
-            occurrences[j] = pd.DataFrame(occurrences[j])   
-            occurrences[j]["rollcount"] = occurrences[j].rolling(window, min_periods=1).count()
-            occurrences[j].loc[:, "rollcount"] = [x / window * 100 for x in occurrences[j].loc[:, "rollcount"]]
-        
-        #Plot
-        plt.figure()
-        plt.rcParams['figure.dpi'] = dpi
-        plt.xlabel("Time [ns]", fontsize=fontsize)
-        plt.ylabel("Probability [%]", fontsize=fontsize)
-        plt.tick_params(axis='both', which='major', labelsize=fontsize)
-        
-        for j,l,c,line in zip(range(0,len(top)), label, color, linestyle):
-            plt.plot(occurrences[j].index * (simulation_length/self.length), occurrences[j].loc[:, "rollcount"], label = l, color = c, linestyle = line)
-        
-        plt.legend(fontsize = fontsize)
-        plt.ylim(0,ymax)
-        plt.show()
+        if self.weights == None:
+            #List top conformers
+            top = []
+            for r in range(0,ranks):
+                top.append(self.count.loc[r, "Conformer"])
+            
+            #Count rolling occurrance of top conformers
+            occurrences = [[] for _ in range(len(top))]
+            
+            for j, conf in enumerate(top):
+                occurrences[j] = list(self.binary_compressed.loc[:,"Conformer"])
+            
+                for i in range(0, len(occurrences[j])):
+                    if occurrences[j][i] == conf:
+                        pass
+                    else:
+                        occurrences[j][i] = np.nan
+                        
+                occurrences[j] = pd.DataFrame(occurrences[j])   
+                occurrences[j]["rollcount"] = occurrences[j].rolling(window, min_periods=1).count()
+                occurrences[j].loc[:, "rollcount"] = [x / window * 100 for x in occurrences[j].loc[:, "rollcount"]]
+            
+            #Plot
+            plt.figure()
+            plt.rcParams['figure.dpi'] = dpi
+            plt.xlabel("Time [ns]", fontsize=fontsize)
+            plt.ylabel("Probability [%]", fontsize=fontsize)
+            plt.tick_params(axis='both', which='major', labelsize=fontsize)
+            
+            for j,l,c,line in zip(range(0,len(top)), label, color, linestyle):
+                plt.plot(occurrences[j].index * (simulation_length/self.length), occurrences[j].loc[:, "rollcount"], label = l, color = c, linestyle = line)
+            
+            plt.legend(fontsize = fontsize)
+            plt.ylim(0,ymax)
+            plt.show()
 
-        if file is None:
-            pass
+            if file is None:
+                pass
+            else:
+                plt.savefig(file, bbox_inches='tight')
+            plt.show()
         else:
-            plt.savefig(file, bbox_inches='tight')
-        plt.show()
+            print("Moving average can not be computed for weighted data")
+
+    def _plot_pca(self, top, label, color, components_plot, dpi, figsize, fontsize, all, all_color, all_label, marker, conformer, legend, file, biplot, biplot_fontsize,pick, datatopick, colorpick, coefficients, ticks, finalDf=None, pca_df_scaled=None, loadings_r=None):
+            #Plot
+            plt.rcParams['figure.dpi'] = dpi
+            fig = plt.figure(figsize = (figsize))
+            ax = fig.add_subplot(1,1,1) 
+            ax.set_xlabel('Principal Component {}'.format(components_plot[0]), fontsize = fontsize)
+            ax.set_ylabel('Principal Component {}'.format(components_plot[1]), fontsize = fontsize)
+            #Ticks
+            if ticks == False:
+                ax.get_xaxis().set_ticks([])
+                ax.get_yaxis().set_ticks([])
+            else:
+                plt.xticks(fontsize=fontsize)
+                plt.yticks(fontsize=fontsize)
+                pass
+            #plot all
+            if all == True:
+                if biplot == True:
+                    ax.scatter(pca_df_scaled.iloc[:,0], pca_df_scaled.iloc[:,1], c = all_color, alpha = 0.3, marker = marker, s = 5, label = all_label)
+                else:
+                    ax.scatter(finalDf.iloc[:,components_plot[0]-1], finalDf.iloc[:,components_plot[1]-1], c = all_color, alpha = 0.3, marker = marker, s = 5, label = all_label)
+            #plot conformers
+            else:
+                pass
+            if conformer == True:
+                if biplot == True:
+                    for i, t in enumerate(top):
+                        indicesToKeep = pca_df_scaled.loc[:,"Conformer"] == t
+                        ax.scatter(pca_df_scaled.loc[indicesToKeep,0], pca_df_scaled.loc[indicesToKeep,1]
+                                   , c = color[i]
+                                   , s = 30
+                                   , label = label[i]
+                                   , edgecolors = "black"
+                                   , marker = marker
+                                   , linewidth = 0.2
+                                   , alpha = 1
+                                       )
+                else:
+                    for i, t in enumerate(top):
+                        indicesToKeep = finalDf.loc[:,"Conformer"] == t
+                        ax.scatter(finalDf.loc[indicesToKeep,components_plot[0]-1], finalDf.loc[indicesToKeep,components_plot[1]-1]
+                                   , c = color[i]
+                                   , s = 30
+                                   , label = label[i]
+                                   , edgecolors = "black"
+                                   , marker = marker
+                                   , linewidth = 0.2
+                                   , alpha = 1
+                                       )
+            else:
+                pass
+            if file is None:
+                pass
+            else:
+                plt.savefig(file, bbox_inches='tight')
+            if legend == True:
+                ax.legend(fontsize = fontsize)
+            else:
+                pass
+            if pick == True:
+                if biplot == True:
+                    for d in datatopick:
+                        ax.scatter(pca_df_scaled.iloc[d,0], pca_df_scaled.iloc[d,0], c = colorpick, marker = "x", s = 5)
+                else:
+                    for d in datatopick:
+                        ax.scatter(finalDf.iloc[d,components_plot[0]-1], finalDf.iloc[d,components_plot[1]-1], c = colorpick, marker = "x", s = 5)
+            else:
+                pass
+            if biplot == True:
+                #plot coefficient
+                distances = []
+                for row in range(0,len(loadings_r)):
+                    distances.append(((0-loadings_r.iloc[row,components_plot[0]])**2 + (0-loadings_r.iloc[row,components_plot[1]])**2)**0.5)
+                loadings_r['vector_norm'] = distances
+                loadings_v = loadings_r.sort_values(by=['vector_norm'], ascending = False)
+                #
+                for i in range(0,coefficients):
+                    plt.text(loadings_v.iloc[i,components_plot[0]]+0.025, loadings_v.iloc[i,components_plot[1]]+0.025, loadings_v.iloc[i,0], fontsize=biplot_fontsize, bbox=dict(boxstyle='round', alpha = 0.7, facecolor = "white", edgecolor="gray"))
+                    ax.scatter(loadings_v.iloc[i,components_plot[0]], loadings_v.iloc[i,components_plot[1]], s=100, c = "darkgray", alpha = 0.7)
+                    plt.arrow(
+                        0, 0, # coordinates of arrow base
+                        loadings_v.iloc[i,components_plot[0]], # length of the arrow along x
+                        loadings_v.iloc[i,components_plot[1]], # length of the arrow along y
+                        color='black', 
+                        head_width=0.01,
+                        linewidth=0.2
+                        )
+            else:
+                pass
+            plt.show()
 
     def pca(self,
             components = 2,
             ranks = 3,
             components_plot = [1,2], #only 2D supported #
             all = True,
+            all_color = "gray",
+            all_label = "all",
+            marker = ".",
             conformer = True,
             label = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"],
             color = ["#173c4d","#146b65","#4e9973","#a7c09f","#dfa790","#c76156","#9a2b4c","#600b4a"],
@@ -842,6 +920,7 @@ class glyconformer():
             datatopick = [0,0],
             colorpick = "darkred",
             biplot = False,
+            biplot_fontsize = 7,
             coefficients = 3,
             file = None):
         
@@ -907,110 +986,10 @@ class glyconformer():
             scaler = 1 / (scaler_df.max() - scaler_df.min())
             for index in scaler.index:
                 pca_df_scaled[index] *= scaler[index]
-        
-            #Plot
-            plt.rcParams['figure.dpi'] = dpi
-            fig = plt.figure(figsize = (figsize))
-            ax = fig.add_subplot(1,1,1) 
-            ax.set_xlabel('Principal Component {}'.format(components_plot[0]), fontsize = fontsize)
-            ax.set_ylabel('Principal Component {}'.format(components_plot[1]), fontsize = fontsize)
-            #Ticks
-            if ticks == False:
-                ax.get_xaxis().set_ticks([])
-                ax.get_yaxis().set_ticks([])
-            else:
-                pass
-            #plot all
-            if all == True:
-                ax.scatter(pca_df_scaled.iloc[:,0], pca_df_scaled.iloc[:,1], c = "gray", alpha = 0.3, marker = ".", s = 5, label = "all")
-            #plot conformers
-            else:
-                pass
-            if all == True:
-                for i, t in enumerate(top):
-                    indicesToKeep = pca_df_scaled.loc[:,"Conformer"] == t
-                    ax.scatter(pca_df_scaled.loc[indicesToKeep,0], pca_df_scaled.loc[indicesToKeep,1]
-                               , c = color[i]
-                               , s = 30
-                               , label = label[i]
-                               , edgecolors = "black"
-                               , marker = "."
-                               , linewidth = 0.2
-                               , alpha = 1
-                                   )
-            else:
-                pass
-            #plot coefficient
-            distances = []
-            for row in range(0,len(loadings_r)):
-                distances.append(((0-loadings_r.iloc[row,components_plot[0]])**2 + (0-loadings_r.iloc[row,components_plot[1]])**2)**0.5)
-            loadings_r['vector_norm'] = distances
-            loadings_v = loadings_r.sort_values(by=['vector_norm'], ascending = False)
-            #
-            for i in range(0,coefficients):
-                plt.text(loadings_v.iloc[i,components_plot[0]]+0.025, loadings_v.iloc[i,components_plot[1]]+0.025, loadings_v.iloc[i,0], fontsize=5, bbox=dict(boxstyle='round', alpha = 0.7, facecolor = "white", edgecolor="gray"))
-                ax.scatter(loadings_v.iloc[i,components_plot[0]], loadings_v.iloc[i,components_plot[1]], s=100, c = "darkgray", alpha = 0.7)
-                plt.arrow(
-                    0, 0, # coordinates of arrow base
-                    loadings_v.iloc[i,components_plot[0]], # length of the arrow along x
-                    loadings_v.iloc[i,components_plot[1]], # length of the arrow along y
-                    color='black', 
-                    head_width=0.01,
-                    linewidth=0.2
-                    )
-            #Labels
-            if legend == True:
-                ax.legend(fontsize = fontsize)
-            else:
-                pass 
+       
+            self._plot_pca(top, label, color, components_plot, dpi, figsize, fontsize, all, all_color, all_label, marker, conformer, legend, file, biplot, biplot_fontsize, pick, datatopick, colorpick, coefficients, ticks, pca_df_scaled=pca_df_scaled, loadings_r=loadings_r)
         else:
-            #Plot
-            plt.rcParams['figure.dpi'] = dpi
-            fig = plt.figure(figsize = (figsize))
-            ax = fig.add_subplot(1,1,1)
-            ax.set_xlabel('Principal Component {}'.format(components_plot[0]), fontsize = fontsize)
-            ax.set_ylabel('Principal Component {}'.format(components_plot[1]), fontsize = fontsize)
-            if ticks == False:
-                ax.get_xaxis().set_ticks([])
-                ax.get_yaxis().set_ticks([])
-            else:
-                pass
-            #plot all
-            if all == True:
-                ax.scatter(finalDf.iloc[:,components_plot[0]-1], finalDf.iloc[:,components_plot[1]-1], c = "darkgray", alpha = 0.3, marker = ".", s = 5, label = "all")
-            #plot conformers
-            else:
-                pass
-            if conformer == True:
-                for i, t in enumerate(top):
-                    indicesToKeep = finalDf.loc[:,"Conformer"] == t
-                    ax.scatter(finalDf.loc[indicesToKeep,components_plot[0]-1], finalDf.loc[indicesToKeep,components_plot[1]-1]
-                               , c = color[i]
-                               , s = 30
-                               , label = label[i]
-                               , edgecolors = "black"
-                               , marker = "."
-                               , linewidth = 0.2
-                               , alpha = 1
-                                   )
-            else:
-                pass
-            if pick == True:
-                for d in datatopick:
-                    ax.scatter(finalDf.iloc[d,components_plot[0]-1], finalDf.iloc[d,components_plot[1]-1], c = colorpick, marker = "x", s = 5)
-            else:
-                pass
-            
-            if legend == True:
-                ax.legend(fontsize = fontsize)
-            else:
-                pass
-                
-        if file is None:
-            pass
-        else:
-            plt.savefig(file, bbox_inches='tight')
-        plt.show()
+            self._plot_pca(top, label, color, components_plot, dpi, figsize, fontsize, all, all_color, all_label, marker, conformer, legend, file, biplot, biplot_fontsize, pick, datatopick, colorpick, coefficients, ticks, finalDf=finalDf)
 
     def pca_fep(self,
                 components = 2,
@@ -1079,7 +1058,7 @@ class glyconformer():
             plt.savefig(file, bbox_inches='tight')
         plt.show()
 
-class glycompare:
+class Glycompare:
     # Class variables
     ## maybe add directory names ?
     def __init__(self, inputfile, inputdir, common_angles, common_branches, common_angles_separators, count, binary_compressed, outputdir = "./", n_blocks = 10, weights = None): # check later which parameters are really necessary?!

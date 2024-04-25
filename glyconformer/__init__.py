@@ -1,2 +1,2 @@
 print(f'Invoking __init__.py for {__name__}')
-from .lib import glyconformer
+from .lib import Glyconformer, Glycompare
