@@ -22,6 +22,6 @@ setup(name='GlyCONFORMER',
       packages=find_packages(),
       package_data={'':['**/*.dat']},
       install_requires=[
-                       "numpy","matplotlib","pandas<=1.3.5","plumed","scipy"
+                       "numpy==1.26.4","matplotlib","pandas<=1.3.5","plumed","scipy"
                        ],
       )
