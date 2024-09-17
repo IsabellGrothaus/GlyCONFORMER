@@ -1235,7 +1235,7 @@ class Glycompare:
             label = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"],
             color = ["#173c4d","#146b65","#4e9973","#a7c09f","#dfa790","#c76156","#9a2b4c","#600b4a"],
             color_basic = ["gray","gray","gray","gray"],
-            marker = [".","x",":","o"],
+            marker = [".","x","v","o"],
             fontsize = 7,
             dpi = 600,
             figsize = [5,5],
@@ -1475,6 +1475,7 @@ class Glycompare:
                 components_plot = [1,2],
                 figsize = [5,5],
                 legend = True,
+                axislim = False,
                 ticks = True,
                 bins = 50,
                 cmap = "jet",
@@ -1578,6 +1579,12 @@ class Glycompare:
             ax.set_xlabel('Principal Component {}'.format(components_plot[0]), fontsize = fontsize)
             ax.set_ylabel('Principal Component {}'.format(components_plot[1]), fontsize = fontsize)
             
+            if axislim == False:
+                pass
+            else:
+                ax.set_xlim(axislim[0], axislim[1])
+                ax.set_ylim(axislim[2], axislim[3])
+
             cp = plt.contourf(yedges[1:], xedges[1:], F.T, colorrange, vmax = vmax, cmap=cmap, alpha = alpha)
             
             if legend == True:
