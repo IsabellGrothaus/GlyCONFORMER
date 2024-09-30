@@ -18,6 +18,7 @@ from sklearn.decomposition import PCA
 from wpca import WPCA, EMPCA
 import warnings
 import os 
+import streamlit as st
 
 # Suppress FutureWarning messages
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -78,6 +79,7 @@ def _readdict(path, file):
         dict = json.loads(data)
     
         return dict 
+
 def _readseparator(path, file):
         """
         Function reading the separator information from file as lists.
@@ -127,6 +129,7 @@ def _vertical_conformer_string(namelist):
                 res += ele
         namelist_v += [res]
     return namelist_v
+
 def _include_branch_conformer_string(namelist, branches, features):
     """
     Function that inserts branch separators and replaces 
@@ -219,7 +222,7 @@ class Glyconformer():
             self.weights = weights
         else:
             self.glycantype = glycantype
-            self.inputfile = "TUTORIAL/{}_example/{}_angles.dat".format(self.glycantype,self.glycantype)
+            self.inputfile = "../TUTORIAL/{}_example/{}_angles.dat".format(self.glycantype,self.glycantype)
 
             self.angles = _readfeature("LIBRARY_GLYCANS.{}".format(self.glycantype), "angles.dat")
             self.omega_angles = _readfeature("LIBRARY_GLYCANS.{}".format(self.glycantype), "omega_angles.dat")
