@@ -8,61 +8,29 @@ import pandas as pd
 
 # -------- INITIALIZATION --------- #
 
+
 def setSessionStates():
 
     if 'glycan_state' not in st.session_state:
         st.session_state['glycan_state'] = None
 
-
-with st.sidebar:
-    add_radio = st.radio(
-        "Choose a shipping method",
-        ("Standard (5-15 days)", "Express (2-5 days)")
-    )
-
-    st.write(add_radio)
-
-    tab1, tab2 = st.tabs(["User Input", "Preselection"])
-
-    with tab1:
-        st.subheader("select your dataframe")
-        uploaded_file = st.file_uploader("Choose a file")
-
-        if uploaded_file is not None:
-            st.write("filename:", uploaded_file.name)
-            file_content = pd.read_csv(uploaded_file, 
-                                    sep='\s+',                           # \s+' -> mit Whitespace gertrennt. + -> (ein oder mehrmals)
-                                    header=None, 
-                                    names=['col1', 'col2'], 
-                                    dtype={'col1': int, 'col2': str})
-            st.write(file_content)
-            st.write(file_content['col1'].to_numpy(), file_content['col2'].to_numpy())
-
-    with tab2:
-        st.header("select an existing dataset")
-        st.write("under construction")
-
-
 setSessionStates()
 
-st.write("""
-    <style>
-        .stTabs > div > div > div > button {
-            width: 50%;
-        }
-    </style>
-""", unsafe_allow_html=True)
+
+# -------- MAIN PAGE --------- #
+
+tab_main1, tab_main2, tab_main3 = st.tabs(["test1", "test2", "test3"])
+
+with tab_main1:
+    st.header("Headline")
 
 
+# -------- FUNCTIONS--------- #
 
-# -------- ### --------- #
-
-st.title("Hi, I am a streamlit Web-App")
 
 def loadLocalGlycans(): 
 
     local_glycans = []
-
     for i in os.listdir("../LIBRARY_GLYCANS/"):
         if("__" not in i):
             local_glycans.append(i)
@@ -86,12 +54,12 @@ def readSeparatorData(path, file):
 
     return dictionary
 
-@st.cache_data
+@st.cache_data                              # wenn der Glykan-String bereits abgerufen wurde, bezieht er die Daten aus dem Cache
 def initialize_Glycan(glycantype: str):
     st.write(glycantype)
 
     Glycan = Glyconformer(
-        inputfile =         "../TUTORIAL/{}_example/{}_angles.dat".format(glycantype,glycantype), 
+        inputfile =         "../TUTORIAL/{}_example/{}_angles.dat".format(glycantype, glycantype), 
         angles =            readAnglesData("LIBRARY_GLYCANS.{}".format(glycantype), "angles.dat"), 
         omega_angles =      readAnglesData("LIBRARY_GLYCANS.{}".format(glycantype), "omega_angles.dat"), 
         separator_index =   readSeparatorData("LIBRARY_GLYCANS.{}".format(glycantype), "separator.dat")['separator_index'], 
@@ -109,34 +77,72 @@ def initialize_Glycan(glycantype: str):
     st.write(Glycan.separator_index)
     st.write(Glycan.separator)
 
-def on_change(selected_glycan):
-    if st.session_state['glycan_state'] != selected_glycan:
+def on_change(selected_glycan: str):
+    
+    st.session_state['glycan_state'] = selected_glycan
 
-        st.session_state['glycan_state'] = selected_glycan
-        initialize_Glycan(selected_glycan)
+    with tab_main1: 
+        initialize_Glycan(st.session_state['glycan_state'])
 
 
-selected_glycan = st.selectbox("Wählen Sie eine der folgenden Optionen", loadLocalGlycans(), on_change=lambda: on_change(selected_glycan))
+# -------- SIDEBAR --------- #
+
+
+with st.sidebar:
+
+    tab_sidebar1, tab_sidebar2 = st.tabs(["User Input", "Preselection"])
+
+    with tab_sidebar1:
+        st.subheader("select your dataframe")
+        uploaded_file = st.file_uploader(
+                                    "...",
+                                    label_visibility = "collapsed",
+        )
+
+        if uploaded_file is not None:
+            st.write("filename:", uploaded_file.name)
+            file_content = pd.read_csv(
+                                    uploaded_file, 
+                                    sep='\s+',                           # \s+' -> mit Whitespace gertrennt. + -> (ein oder mehrmals)
+                                    header=None, 
+                                    names=['col1', 'col2'], 
+                                    dtype={'col1': int, 'col2': str}
+            )
+            st.write(file_content)                                       # testimplementation
+            st.write(file_content['col1'].to_numpy(), file_content['col2'].to_numpy())
+
+    with tab_sidebar2:
+        st.subheader("select a dataset")
+
+        selected_glycan = st.selectbox(
+                                    "...",
+                                    ("M5", "A2G2S2"), 
+                                    index = None,                                           # initialisiert eine leere Auswahlbox
+                                    label_visibility = "collapsed",
+                                    placeholder = "choose one of the following glycans"
+        )
+
+        if selected_glycan is not None:
+            st.write("You selected:", selected_glycan)
+            on_change(selected_glycan)
 
 
 # -------- ### --------- #
 
+
+st.write("""
+    <style>
+        .stTabs > div > div > div > button {
+            width: 50%;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+
+
 '''
-@st.cache_data
-def load_data():
-    # Simuliere eine langsame Berechnung
-    import time
-    time.sleep(5)
-    return [1, 2, 3]
-
-array = load_data()
-st.write(array)
-
-
-
 if "attendance" not in st.session_state:
     st.session_state.attendance = set()
-
 
 def take_attendance():
     if st.session_state.name in st.session_state.attendance:
