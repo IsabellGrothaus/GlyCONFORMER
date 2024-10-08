@@ -1,4 +1,5 @@
 import csv
+import html
 import importlib
 import streamlit as st
 from glyconformer.lib import Glyconformer, Glycompare
@@ -8,11 +9,30 @@ import pandas as pd
 
 # -------- INITIALIZATION --------- #
 
+'''
+# Define your javascript
+my_js = """
+alert("Hola mundo");
+"""
+
+# Wrapt the javascript as html code
+my_html = f"<script>{my_js}</script>"
+
+# Execute your app
+st.title("Javascript example")
+html.write(my_html)
+'''
 
 def setSessionStates():
 
     if 'glycan_state' not in st.session_state:
         st.session_state['glycan_state'] = None
+    if 'progress' not in st.session_state:
+        st.session_state['progress'] = set()
+        st.session_state['progress'].add(1)             # Progress-Step "1" ist bereits enthalten
+
+    if 'dataframe' not in st.session_state:
+        st.session_state['dataframe'] = None
 
 setSessionStates()
 
@@ -56,7 +76,7 @@ def readSeparatorData(path, file):
 
 @st.cache_data                              # wenn der Glykan-String bereits abgerufen wurde, bezieht er die Daten aus dem Cache
 def initialize_Glycan(glycantype: str):
-    st.write(glycantype)
+    st.write(st.session_state['glycan_state'])
 
     Glycan = Glyconformer(
         inputfile =         "../TUTORIAL/{}_example/{}_angles.dat".format(glycantype, glycantype), 
@@ -84,6 +104,56 @@ def on_change(selected_glycan: str):
     with tab_main1: 
         initialize_Glycan(st.session_state['glycan_state'])
 
+def change_opacity(element_class, index, opacity):
+
+    # script = f"<script>document.getElementsByClassName('{element_class}')[{index}].childNodes[0].style.opacity = '{opacity}%'; console.log(document.getElementsByClassName('{element_class}')[{index}].childNodes[0])</script>"
+    # st.markdown(script, unsafe_allow_html=True)
+
+    st.markdown(
+        """
+        <script>
+            console.log('Hi')
+        </script>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("<script src='script.js'></script>", unsafe_allow_html=True)
+    st.write(index)
+
+def checkProgress():
+
+
+    if(1 in st.session_state['progress']):
+
+        st.subheader("1. Select your dataframe")
+        dataframe_file = st.file_uploader(
+                                        "...",
+                                        label_visibility = "collapsed",
+        )
+
+        if dataframe_file is not None:
+            #! check if dataframe is correct
+            st.session_state['progress'].add(2)
+            #! ---
+
+            change_opacity("e1nzilvr5", 5, 50)
+
+            file_content = pd.read_csv(dataframe_file, sep='\s+')
+
+            with tab_main2:
+                st.subheader("filename:", dataframe_file.name)
+                st.write(file_content)
+
+    
+    st.subheader("2. Select your fepfiles")
+
+    if(2 in st.session_state['progress']):
+        dataframe_file = st.file_uploader(
+                                        "t..",
+                                        label_visibility = "collapsed",
+        )
+
 
 # -------- SIDEBAR --------- #
 
@@ -93,37 +163,21 @@ with st.sidebar:
     tab_sidebar1, tab_sidebar2 = st.tabs(["User Input", "Preselection"])
 
     with tab_sidebar1:
-        st.subheader("select your dataframe")
-        uploaded_file = st.file_uploader(
-                                    "...",
-                                    label_visibility = "collapsed",
-        )
+        checkProgress()
 
-        if uploaded_file is not None:
-            st.write("filename:", uploaded_file.name)
-            file_content = pd.read_csv(
-                                    uploaded_file, 
-                                    sep='\s+',                           # \s+' -> mit Whitespace gertrennt. + -> (ein oder mehrmals)
-                                    header=None, 
-                                    names=['col1', 'col2'], 
-                                    dtype={'col1': int, 'col2': str}
-            )
-            st.write(file_content)                                       # testimplementation
-            st.write(file_content['col1'].to_numpy(), file_content['col2'].to_numpy())
 
     with tab_sidebar2:
         st.subheader("select a dataset")
 
         selected_glycan = st.selectbox(
                                     "...",
-                                    ("M5", "A2G2S2"), 
+                                    loadLocalGlycans(), 
                                     index = None,                                           # initialisiert eine leere Auswahlbox
                                     label_visibility = "collapsed",
                                     placeholder = "choose one of the following glycans"
         )
 
         if selected_glycan is not None:
-            st.write("You selected:", selected_glycan)
             on_change(selected_glycan)
 
 
@@ -138,7 +192,7 @@ st.write("""
     </style>
 """, unsafe_allow_html=True)
 
-
+st.markdown("<script src='script.js'></script>", unsafe_allow_html=True)
 
 '''
 if "attendance" not in st.session_state:
@@ -154,4 +208,19 @@ def take_attendance():
 with st.form(key="my_form"):
     st.text_input("Name", key="name")
     st.form_submit_button("I'm here!", on_click=take_attendance)
+
+    
+    -------
+
+    
+    file_content = pd.read_csv(
+                    dataframe_file, 
+                    sep='\s+',              # \s+' -> mit Whitespace gertrennt. + -> (ein oder mehrmals)
+                    header=None, 
+                    names=['col1', 'col2'], 
+                    dtype={'col1': int, 'col2': str}
+    )
+
+    st.write(file_content)
+    st.write(file_content['col1'].to_numpy(), file_content['col2'].to_numpy())
 '''
