@@ -1,0 +1,18 @@
+:root {
+    --opacity_full: 100%;
+    --opacity_half: 50%;
+  }
+
+/*
+.stTabs > div > div > div > button {
+    width: 50%;
+}
+*/ 
+
+.custom-subheader-active {
+    opacity: var(--opacity_full);
+}
+
+.custom-subheader-inactive {
+    opacity: var(--opacity_half);
+}

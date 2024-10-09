@@ -9,19 +9,6 @@ import pandas as pd
 
 # -------- INITIALIZATION --------- #
 
-'''
-# Define your javascript
-my_js = """
-alert("Hola mundo");
-"""
-
-# Wrapt the javascript as html code
-my_html = f"<script>{my_js}</script>"
-
-# Execute your app
-st.title("Javascript example")
-html.write(my_html)
-'''
 
 def setSessionStates():
 
@@ -109,46 +96,74 @@ def change_opacity(element_class, index, opacity):
     # script = f"<script>document.getElementsByClassName('{element_class}')[{index}].childNodes[0].style.opacity = '{opacity}%'; console.log(document.getElementsByClassName('{element_class}')[{index}].childNodes[0])</script>"
     # st.markdown(script, unsafe_allow_html=True)
 
-    st.markdown(
-        """
-        <script>
-            console.log('Hi')
-        </script>
-        """,
-        unsafe_allow_html=True,
-    )
+    # st.markdown(
+    #     """
+    #     <script>
+    #        console.log('Hi')
+    #     </script>
+    #     """,
+    #     unsafe_allow_html=True,
+    # )
 
-    st.markdown("<script src='script.js'></script>", unsafe_allow_html=True)
-    st.write(index)
+    # st.markdown("<script src='script.js'></script>", unsafe_allow_html=True)
+    return None
+
+def custom_subheader(text, index):
+
+    ''''
+    with open('styles.css') as f:
+        if(index in st.session_state['progress']):
+            st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+            st.write("Test")
+
+        else:
+            st.write("Test2")
+
+            css_content = f.read().replace('--opacity: 50%;', '--opacity: 100%;')
+            st.markdown(f"<style>{css_content}</style>", unsafe_allow_html=True)
+    '''
+
+    with open('styles.css') as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
+
+    if(index in st.session_state['progress']):
+        st.markdown(f"<h3 class='custom-subheader-active'>{text}</h3>", unsafe_allow_html=True)
+    else:
+        st.markdown(f"<h3 class='custom-subheader-inactive'>{text}</h3>", unsafe_allow_html=True)
 
 def checkProgress():
 
+    custom_subheader("1. Select your dataframe", 1)
 
     if(1 in st.session_state['progress']):
 
-        st.subheader("1. Select your dataframe")
         dataframe_file = st.file_uploader(
                                         "...",
                                         label_visibility = "collapsed",
         )
 
         if dataframe_file is not None:
+
             #! check if dataframe is correct
             st.session_state['progress'].add(2)
             #! ---
-
-            change_opacity("e1nzilvr5", 5, 50)
+            # change_opacity("e1nzilvr5", 5, 50)
 
             file_content = pd.read_csv(dataframe_file, sep='\s+')
 
             with tab_main2:
                 st.subheader("filename:", dataframe_file.name)
                 st.write(file_content)
+        else:
+            st.write("Test")
+    
 
     
-    st.subheader("2. Select your fepfiles")
+    custom_subheader("2. Select your fepfiles", 2)
 
     if(2 in st.session_state['progress']):
+
         dataframe_file = st.file_uploader(
                                         "t..",
                                         label_visibility = "collapsed",
@@ -192,7 +207,8 @@ st.write("""
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown("<script src='script.js'></script>", unsafe_allow_html=True)
+# with open('styles.css') as f:                                               # open() öffnet die Datei
+#     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)       # f.read() liest den Inhalt der Datei ein und übergibt es Streamlit als Element
 
 '''
 if "attendance" not in st.session_state:
