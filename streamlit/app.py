@@ -1,5 +1,4 @@
 import csv
-import html
 import importlib
 import streamlit as st
 from glyconformer.lib import Glyconformer, Glycompare
@@ -66,20 +65,21 @@ def initialize_Glycan(glycantype: str):
     st.write(st.session_state['glycan_state'])
 
     Glycan = Glyconformer(
-        inputfile =         "../TUTORIAL/{}_example/{}_angles.dat".format(glycantype, glycantype), 
+        inputfile =         "../TUTORIAL/{}_example/{}_angles.dat".format(glycantype, glycantype),
+        length = 1, 
+        glycantype =        None,
         angles =            readAnglesData("LIBRARY_GLYCANS.{}".format(glycantype), "angles.dat"), 
         omega_angles =      readAnglesData("LIBRARY_GLYCANS.{}".format(glycantype), "omega_angles.dat"), 
         separator_index =   readSeparatorData("LIBRARY_GLYCANS.{}".format(glycantype), "separator.dat")['separator_index'], 
         separator =         readSeparatorData("LIBRARY_GLYCANS.{}".format(glycantype), "separator.dat")['separator'], 
         fepdir =            "../LIBRARY_GLYCANS/{}".format(glycantype), 
-        order_min =         5, 
         order_max =         5,
-
-        length = 20, 
-        weights = None
+        order_min =         5, 
+        weights =           None,
+        # colvar =            st.session_state['dataframe'],
     )
 
-    st.write(Glycan.binary)
+    st.write(Glycan.colvar)
     st.write(Glycan.minima["phi1_2"][0])
     st.write(Glycan.separator_index)
     st.write(Glycan.separator)
@@ -108,9 +108,9 @@ def change_opacity(element_class, index, opacity):
     # st.markdown("<script src='script.js'></script>", unsafe_allow_html=True)
     return None
 
-def custom_subheader(text, index):
+def custom_subheader(text: str):
 
-    ''''
+    '''
     with open('styles.css') as f:
         if(index in st.session_state['progress']):
             st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
@@ -123,44 +123,39 @@ def custom_subheader(text, index):
             st.markdown(f"<style>{css_content}</style>", unsafe_allow_html=True)
     '''
 
-    with open('styles.css') as f:
-        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
-
-    if(index in st.session_state['progress']):
+    if(int(text[0]) in st.session_state['progress']):
         st.markdown(f"<h3 class='custom-subheader-active'>{text}</h3>", unsafe_allow_html=True)
     else:
         st.markdown(f"<h3 class='custom-subheader-inactive'>{text}</h3>", unsafe_allow_html=True)
 
 def checkProgress():
 
-    custom_subheader("1. Select your dataframe", 1)
+    custom_subheader("1. Select your dataframe")
 
     if(1 in st.session_state['progress']):
 
-        dataframe_file = st.file_uploader(
+        dataframe = st.file_uploader(
                                         "...",
                                         label_visibility = "collapsed",
-        )
+        )      
 
-        if dataframe_file is not None:
+        if dataframe is not None:
 
-            #! check if dataframe is correct
+            # check if dataframe is correct
             st.session_state['progress'].add(2)
-            #! ---
-            # change_opacity("e1nzilvr5", 5, 50)
-
-            file_content = pd.read_csv(dataframe_file, sep='\s+')
-
+            st.session_state['dataframe'] = pd.read_csv(dataframe, sep='\s+')
+   
             with tab_main2:
-                st.subheader("filename:", dataframe_file.name)
-                st.write(file_content)
+                st.subheader(f"filename: {dataframe.name}")
+                initialize_Glycan("M5")
+
         else:
             st.write("Test")
     
 
     
-    custom_subheader("2. Select your fepfiles", 2)
+    custom_subheader("2. Select your fepfiles")
 
     if(2 in st.session_state['progress']):
 
@@ -199,6 +194,10 @@ with st.sidebar:
 # -------- ### --------- #
 
 
+with open('styles.css') as f:
+    st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
+'''
 st.write("""
     <style>
         .stTabs > div > div > div > button {
@@ -206,9 +205,7 @@ st.write("""
         }
     </style>
 """, unsafe_allow_html=True)
-
-# with open('styles.css') as f:                                               # open() öffnet die Datei
-#     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)       # f.read() liest den Inhalt der Datei ein und übergibt es Streamlit als Element
+'''
 
 '''
 if "attendance" not in st.session_state:
