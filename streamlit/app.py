@@ -1,10 +1,15 @@
 import csv
 import importlib
+import tempfile
 import streamlit as st
-from glyconformer.lib import Glyconformer, Glycompare
-import os as os
+import plumed
+# from glyconformer.lib import Glyconformer, Glycompare
 import pandas as pd
+import os as os
+import sys
 
+sys.path.append("/home/eberl/bachelor_project/GlyCONFORMER/glyconformer/")
+from lib import Glyconformer
 
 # -------- INITIALIZATION --------- #
 
@@ -65,9 +70,8 @@ def initialize_Glycan(glycantype: str):
     st.write(st.session_state['glycan_state'])
 
     Glycan = Glyconformer(
-        inputfile =         "../TUTORIAL/{}_example/{}_angles.dat".format(glycantype, glycantype),
-        length = 1, 
-        glycantype =        None,
+        inputfile =         "../TUTORIAL/{}_example/{}_angles_test.dat".format(glycantype, glycantype),
+
         angles =            readAnglesData("LIBRARY_GLYCANS.{}".format(glycantype), "angles.dat"), 
         omega_angles =      readAnglesData("LIBRARY_GLYCANS.{}".format(glycantype), "omega_angles.dat"), 
         separator_index =   readSeparatorData("LIBRARY_GLYCANS.{}".format(glycantype), "separator.dat")['separator_index'], 
@@ -76,8 +80,12 @@ def initialize_Glycan(glycantype: str):
         order_max =         5,
         order_min =         5, 
         weights =           None,
-        # colvar =            st.session_state['dataframe'],
+
+        # colvar =            st.session_state['dataframe']
+
     )
+ 
+    
 
     st.write(Glycan.colvar)
     st.write(Glycan.minima["phi1_2"][0])
@@ -129,6 +137,29 @@ def custom_subheader(text: str):
     else:
         st.markdown(f"<h3 class='custom-subheader-inactive'>{text}</h3>", unsafe_allow_html=True)
 
+def readDataframe(dataframe):
+    
+    # In Bytestring konvertieren
+    bytes_data = dataframe.getvalue()
+
+    # In temporäre Datei schreiben
+    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+        temp_file.write(bytes_data)
+        temp_file_path = temp_file.name
+
+    # Mit plumed.read_as_pandas lesen
+    colvar = plumed.read_as_pandas(temp_file_path)
+
+    # Temporäre Datei löschen
+    import os
+    os.remove(temp_file_path)
+
+    print("........................................ Hier app.py")
+    print(colvar)
+    print("......................................")
+
+    return colvar
+
 def checkProgress():
 
     custom_subheader("1. Select your dataframe")
@@ -144,11 +175,13 @@ def checkProgress():
 
             # check if dataframe is correct
             st.session_state['progress'].add(2)
-            st.session_state['dataframe'] = pd.read_csv(dataframe, sep='\s+')
+
+            st.session_state['dataframe'] = readDataframe(dataframe)
    
-            with tab_main2:
-                st.subheader(f"filename: {dataframe.name}")
-                initialize_Glycan("M5")
+            # with tab_main2:
+            #     st.subheader(f"filename: {dataframe.name}")
+
+
 
         else:
             st.write("Test")
