@@ -8,7 +8,6 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
-import plumed
 from scipy.signal import argrelextrema
 import json
 import matplotlib.ticker as ticker
@@ -18,24 +17,44 @@ from sklearn.decomposition import PCA
 from wpca import WPCA, EMPCA
 import warnings
 import os 
+import plumed
 import streamlit as st
 
 # Suppress FutureWarning messages
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.simplefilter(action='ignore', category=UserWarning)
 
-def _readinputfile(inputfile, angles):
+def _readinputfile(inputfile, angles, self):
+
     """
     Function reading a dataframe from file, using the self.inputfile.
     """
-    try:
-        colvar = plumed.read_as_pandas(inputfile)
-    except:
-        colvar = pd.read_csv(inputfile, delim_whitespace=True)
-    finally:
+    if self.colvar is None:
+
+        try:
+            colvar = plumed.read_as_pandas(inputfile)
+        except:
+            colvar = pd.read_csv(inputfile, delim_whitespace=True)
+
         colvar = colvar[angles]
         
+    else:
+        colvar = self.colvar
+
     return colvar
+
+def _create_colvar(colvar, length, self):
+
+    if colvar is None:
+        colvar = _readinputfile(self.inputfile, self.angles, self)
+
+    if length is None:
+        length = len(colvar)
+
+
+    colvar = colvar.iloc[::round(colvar.shape[0]/length), :] 
+
+    return colvar, length
 
 def _readfeature(path, file):
         """
@@ -173,7 +192,9 @@ class Glyconformer():
 
     def __init__(self, inputfile=None, length=None, glycantype=None,
                  angles=None, omega_angles=None, separator_index=None, 
-                 separator=None, fepdir=None, order_max=None, order_min=None, weights=None):
+                 separator=None, fepdir=None, order_max=None,
+                 order_min=None, weights=None, colvar=None):
+        
         # Instance variables
         """
         Initialize object's attributes, aka setting variables.
@@ -208,7 +229,8 @@ class Glyconformer():
         # attribute reading mainly depends on if a glycantype is specified and 
         # whether information are read from the LIBRARY_GLYCANS or from 
         # user input variables. 
-       
+
+
         if glycantype is None:
             self.inputfile = inputfile
             self.angles = angles
@@ -220,6 +242,12 @@ class Glyconformer():
             self.order_min = order_min
             self.maxima, self.minima = self._find_min_max() 
             self.weights = weights
+            self.colvar = None
+            self.length = length
+            
+            self.colvar, self.length = _create_colvar(colvar, length, self)
+
+
         else:
             self.glycantype = glycantype
             self.inputfile = "../TUTORIAL/{}_example/{}_angles.dat".format(self.glycantype,self.glycantype)
@@ -231,17 +259,14 @@ class Glyconformer():
             self.minima = _readdict("LIBRARY_GLYCANS.{}".format(self.glycantype), "minima.dat")
             self.maxima = _readdict("LIBRARY_GLYCANS.{}".format(self.glycantype), "maxima.dat")
             self.weights = None
+            self.colvar = None
+            self.length = length
+            
+            self.colvar, self.length = _create_colvar(colvar, length, self)
+
 
         self.label = self._label_min()
-        # read inputfile
-        
-        if length is None:
-            self.colvar = _readinputfile(self.inputfile, self.angles)
-            self.length = len(self.colvar) 
-        else:
-            self.length = length 
-            colvar = _readinputfile(self.inputfile, self.angles)
-            self.colvar = colvar.iloc[::round(colvar.shape[0]/self.length), :]
+    
 
         self.binary, self.binary_compressed, self.count, self.angles_separator = self._create_binary()
     
@@ -277,7 +302,104 @@ class Glyconformer():
 
         for f in self.angles:
             profile = pd.read_csv("{}/fes_{}.dat".format(self.fepdir, f), 
-                                  delim_whitespace=True, names=["x", "y"])
+                delim_whitespace=True, names=["x", "y"])
+            print('..................')
+            print(profile)
+
+
+            profmin = profile.index[profile['y'] == 0.0]
+            profmin_value = profile.iloc[profmin[0], 0]
+            p1 = profile.iloc[:profmin[0], :]
+            p2 = profile.iloc[profmin[0]:, :]
+            p = pd.concat([p2, p1])
+            p = p.to_numpy()
+
+            maxima = argrelextrema(p[:, 1], np.greater, order=self.order_max)
+            minima = argrelextrema(p[:, 1], np.less, order=self.order_min)
+
+            if len(maxima[0]) == 0:
+                maxima_dict["{}".format(f)] = [0]
+            elif len(maxima[0]) == 1:
+                maxima_dict["{}".format(f)] = [p[maxima[0][0], [0]].item()]
+            elif len(maxima[0]) == 2:
+                x = [p[maxima[0][0], [0]].item(), p[maxima[0][1], [0]].item()]
+                x.sort()
+                maxima_dict["{}".format(f)] = x
+            elif len(maxima[0]) == 3:
+                x = [p[maxima[0][0], [0]].item(), p[maxima[0][1], [0]].item(), p[maxima[0][2], [0]].item()]
+                x.sort()
+                maxima_dict["{}".format(f)] = x
+
+            if len(minima[0]) == 0:
+                minima_dict["{}".format(f)] = [profmin_value]
+
+            elif len(minima[0]) == 1:   
+                x = [profmin_value, p[minima[0][0], [0]].item()]
+                x.sort()
+
+                test = -3.5 <= x[0] <= maxima_dict["{}".format(f)][0]
+
+                if test == True:                                  
+                    x = [x[0], x[1], x[0]] 
+                    minima_dict["{}".format(f)] = x
+
+                else:
+                    x = [x[1], x[0], x[1]] 
+                    minima_dict["{}".format(f)] = x    
+
+
+            elif len(minima[0]) == 2:
+                x = [profmin_value, p[minima[0][0],[0]].item(), p[minima[0][1],[0]].item()]
+                x.sort()
+
+                test = -3.5 <= x[0] <= maxima_dict["{}".format(f)][0]
+
+                if test == True:                                  
+                    x = [x[0],x[1],x[2],x[0]] 
+                    minima_dict["{}".format(f)] = x
+
+                else:
+                    x = [x[2],x[0],x[1],x[2]] 
+                    minima_dict["{}".format(f)] = x                     
+
+            elif len(minima[0]) >= 3:
+                raise ValueError('More than 3 minima detected')
+
+        return maxima_dict, minima_dict
+    
+    def _find_min_max_extend(self):
+        """ 
+        Finds minima and maxima of a 1D array read from file.
+
+        Function reading in the free energy profiles (as arrays 
+        from fes_*.dat files) of each feature (torsion angle) and 
+        determining the maxima and minima of the array. The minima 
+        array is altered in a way that an array with 2 maxima 
+        corresponds to 3 minima, considering periodicity.
+
+        Parameters
+        ----------
+        
+        Raises
+        ------
+        ValueError
+            If free energy has more than 4 minimas, the algorithm can
+            not handle it anymore.
+
+        Returns
+        -------
+        maxmima_dict : dict
+            Dictionary with features as keys and maxima points as values
+        minima_dict : dict
+            Dictionary with features as keys and minima points as values
+        """
+
+        maxima_dict = {}
+        minima_dict = {}
+
+        for f, value in self.angles.items():
+            profile = value
+
             profmin = profile.index[profile['y'] == 0.0]
             profmin_value = profile.iloc[profmin[0], 0]
             p1 = profile.iloc[:profmin[0], :]
@@ -401,13 +523,14 @@ class Glyconformer():
         branches : list
             List of branches present in the processed glycan structure
         """
-    
-        colvar = _readinputfile(self.inputfile, self.angles)
+
+        colvar = _readinputfile(self.inputfile, self.angles, self)
         colvar = colvar.iloc[::round(colvar.shape[0]/self.length), :]
 
-        binary = _readinputfile(self.inputfile, self.angles)
+        binary = _readinputfile(self.inputfile, self.angles, self)
         binary = binary.iloc[::round(binary.shape[0]/self.length), :]
-    
+
+        
         for f in self.angles:
             if len(self.maxima["{}".format(f)]) == 1:
 
@@ -670,7 +793,11 @@ class Glyconformer():
         fig, axs = plt.subplots(len(self.angles), figsize = (6,60), constrained_layout=True, )
 
         for i, f in zip(range(len(self.angles)),self.angles):
-            profile = pd.read_csv("{}/fes_{}.dat".format(self.fepdir, f), delim_whitespace=True, names = ["x","y"])
+            if self.fepdir is not None:
+                profile = pd.read_csv("{}/fes_{}.dat".format(self.fepdir, f), delim_whitespace=True, names = ["x","y"])
+            else:
+                ''' '''
+
             axs[i].set_title('{}'.format(f),fontsize = 15)
             axs[i].set_xlabel("Torsion angle [rad]", fontsize = 12)
             axs[i].set_ylabel("Free energy [kJ/mol]", fontsize = 12)
@@ -1262,11 +1389,11 @@ class Glycompare:
         for i,f in enumerate(self.inputfile):
             
             if length is None:
-                colvars[i] = _readinputfile(f,self.common_angles)
+                colvars[i] = _readinputfile(f,self.common_angles, self)
                 lengths[i] = len(colvars[i]) 
             else:
                 lengths[i] = length 
-                colvars[i] = _readinputfile(f,self.common_angles)
+                colvars[i] = _readinputfile(f,self.common_angles, self)
                 colvars[i] = colvars[i].iloc[::round(colvars[i].shape[0]/lengths[i]), :]
             
             colvars_pca[i] = pd.DataFrame({"index": colvars[i].index})
@@ -1497,11 +1624,11 @@ class Glycompare:
         for i,f in enumerate(self.inputfile):
             
             if length is None:
-                colvars[i] = _readinputfile(f,self.common_angles)
+                colvars[i] = _readinputfile(f,self.common_angles, self)
                 lengths[i] = len(colvars[i]) 
             else:
                 lengths[i] = length 
-                colvars[i] = _readinputfile(f,self.common_angles)
+                colvars[i] = _readinputfile(f,self.common_angles, self)
                 colvars[i] = colvars[i].iloc[::round(colvars[i].shape[0]/lengths[i]), :]
             
             colvars_pca[i] = pd.DataFrame({"index": colvars[i].index})

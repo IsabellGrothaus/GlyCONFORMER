@@ -24,6 +24,8 @@ def setSessionStates():
 
     if 'dataframe' not in st.session_state:
         st.session_state['dataframe'] = None
+    if 'fep_files' not in st.session_state:
+        st.session_state['fep_files'] = {}
 
 setSessionStates()
 
@@ -65,12 +67,11 @@ def readSeparatorData(path, file):
 
     return dictionary
 
-@st.cache_data                              # wenn der Glykan-String bereits abgerufen wurde, bezieht er die Daten aus dem Cache
-def initialize_Glycan(glycantype: str):
-    st.write(st.session_state['glycan_state'])
+# @st.cache_data                              # wenn der Glykan-String bereits abgerufen wurde, bezieht er die Daten aus dem Cache
+def initialize_local_Glycan(glycantype: str):
 
     Glycan = Glyconformer(
-        inputfile =         "../TUTORIAL/{}_example/{}_angles_test.dat".format(glycantype, glycantype),
+        inputfile =         "../TUTORIAL/{}_example/{}_angles.dat".format(glycantype, glycantype),
 
         angles =            readAnglesData("LIBRARY_GLYCANS.{}".format(glycantype), "angles.dat"), 
         omega_angles =      readAnglesData("LIBRARY_GLYCANS.{}".format(glycantype), "omega_angles.dat"), 
@@ -81,23 +82,36 @@ def initialize_Glycan(glycantype: str):
         order_min =         5, 
         weights =           None,
 
-        # colvar =            st.session_state['dataframe']
-
     )
  
-    
-
     st.write(Glycan.colvar)
     st.write(Glycan.minima["phi1_2"][0])
     st.write(Glycan.separator_index)
     st.write(Glycan.separator)
+
+def initialize_custom_Glycan():
+
+    Glycan = Glyconformer(
+        inputfile =         None,
+
+        angles =            None,           # read angles
+        omega_angles =      None,           # read omega angles
+        separator_index =   None,           # read separator index
+        separator =         None,           # read separator
+        fepdir =            None, 
+        order_max =         5,              # read order max
+        order_min =         5,              # read order min
+        weights =           None,
+
+        colvar = st.session_state['dataframe']
+    )
 
 def on_change(selected_glycan: str):
     
     st.session_state['glycan_state'] = selected_glycan
 
     with tab_main1: 
-        initialize_Glycan(st.session_state['glycan_state'])
+        initialize_local_Glycan(st.session_state['glycan_state'])
 
 def change_opacity(element_class, index, opacity):
 
@@ -140,23 +154,18 @@ def custom_subheader(text: str):
 def readDataframe(dataframe):
     
     # In Bytestring konvertieren
-    bytes_data = dataframe.getvalue()
+    bytes_data: bytes = dataframe.getvalue()
+
 
     # In temporäre Datei schreiben
     with tempfile.NamedTemporaryFile(delete=False) as temp_file:
         temp_file.write(bytes_data)
         temp_file_path = temp_file.name
 
-    # Mit plumed.read_as_pandas lesen
     colvar = plumed.read_as_pandas(temp_file_path)
-
+    colvar = colvar[['phi1_2', 'psi1_2', 'phi2_3', 'psi2_3', 'phi3_5', 'psi3_5', 'omega3_5', 'phi5_7', 'psi5_7', 'omega5_7', 'phi5_6', 'psi5_6', 'phi3_4', 'psi3_4']]
     # Temporäre Datei löschen
-    import os
     os.remove(temp_file_path)
-
-    print("........................................ Hier app.py")
-    print(colvar)
-    print("......................................")
 
     return colvar
 
@@ -173,15 +182,13 @@ def checkProgress():
 
         if dataframe is not None:
 
-            # check if dataframe is correct
             st.session_state['progress'].add(2)
 
             st.session_state['dataframe'] = readDataframe(dataframe)
    
-            # with tab_main2:
-            #     st.subheader(f"filename: {dataframe.name}")
-
-
+            with tab_main2:
+                 # st.subheader(f"filename: {dataframe.name}")
+                 ''' '''
 
         else:
             st.write("Test")
@@ -192,10 +199,17 @@ def checkProgress():
 
     if(2 in st.session_state['progress']):
 
-        dataframe_file = st.file_uploader(
+        dataframe = st.file_uploader(
                                         "t..",
                                         label_visibility = "collapsed",
         )
+
+        if dataframe is not None:
+            profile = pd.read_csv(dataframe, sep='\s+', names=["x", "y"])
+            st.write(profile)
+            st.session_state['fep_files'][dataframe.name] = profile
+            st.write(st.session_state['fep_files'][dataframe.name])
+
 
 
 # -------- SIDEBAR --------- #
