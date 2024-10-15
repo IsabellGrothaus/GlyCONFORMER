@@ -38,7 +38,7 @@ with tab_main1:
     st.header("Headline")
 
 
-# -------- FUNCTIONS--------- #
+# -------- local FUNCTIONS--------- #
 
 
 def loadLocalGlycans(): 
@@ -67,7 +67,7 @@ def readSeparatorData(path, file):
 
     return dictionary
 
-# @st.cache_data                              # wenn der Glykan-String bereits abgerufen wurde, bezieht er die Daten aus dem Cache
+@st.cache_data                              # wenn der Glykan-String bereits abgerufen wurde, bezieht er die Daten aus dem Cache
 def initialize_local_Glycan(glycantype: str):
 
     Glycan = Glyconformer(
@@ -89,22 +89,7 @@ def initialize_local_Glycan(glycantype: str):
     st.write(Glycan.separator_index)
     st.write(Glycan.separator)
 
-def initialize_custom_Glycan():
-
-    Glycan = Glyconformer(
-        inputfile =         None,
-
-        angles =            None,           # read angles
-        omega_angles =      None,           # read omega angles
-        separator_index =   None,           # read separator index
-        separator =         None,           # read separator
-        fepdir =            None, 
-        order_max =         5,              # read order max
-        order_min =         5,              # read order min
-        weights =           None,
-
-        colvar = st.session_state['dataframe']
-    )
+# -------- local FUNCTIONS--------- #
 
 def on_change(selected_glycan: str):
     

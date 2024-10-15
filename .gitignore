@@ -1,4 +1,5 @@
 __pycache__/*
+__pycache__/
 .ipynb_checkpoints
 docs/build
 GlyCONFORMER.egg-info
@@ -12,3 +13,6 @@ GlyCONFORMER_M5G0_02_D204A.ipynb
 GlyCONFORMER_M5G0_01_native_recomputed.ipynb
 GlyCONFORMER_M5_07_native.ipynb
 glyconformer/__pycache__
+LIBRARY_GLYCANS/
+glyconformer/__pycache__
+TUTORIAL/M5_example/M5_angles_test.dat

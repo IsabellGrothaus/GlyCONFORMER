@@ -16,9 +16,7 @@ import csv
 from sklearn.decomposition import PCA
 from wpca import WPCA, EMPCA
 import warnings
-import os 
 import plumed
-import streamlit as st
 
 # Suppress FutureWarning messages
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -29,6 +27,7 @@ def _readinputfile(inputfile, angles, self):
     """
     Function reading a dataframe from file, using the self.inputfile.
     """
+
     if self.colvar is None:
 
         try:
@@ -46,7 +45,8 @@ def _readinputfile(inputfile, angles, self):
 def _create_colvar(colvar, length, self):
 
     if colvar is None:
-        colvar = _readinputfile(self.inputfile, self.angles, self)
+        colvar = plumed.read_as_pandas(self.inputfile)
+        colvar = colvar[self.angles]
 
     if length is None:
         length = len(colvar)
@@ -242,8 +242,6 @@ class Glyconformer():
             self.order_min = order_min
             self.maxima, self.minima = self._find_min_max() 
             self.weights = weights
-            self.colvar = None
-            self.length = length
             
             self.colvar, self.length = _create_colvar(colvar, length, self)
 
@@ -259,14 +257,11 @@ class Glyconformer():
             self.minima = _readdict("LIBRARY_GLYCANS.{}".format(self.glycantype), "minima.dat")
             self.maxima = _readdict("LIBRARY_GLYCANS.{}".format(self.glycantype), "maxima.dat")
             self.weights = None
-            self.colvar = None
-            self.length = length
             
             self.colvar, self.length = _create_colvar(colvar, length, self)
 
 
         self.label = self._label_min()
-    
 
         self.binary, self.binary_compressed, self.count, self.angles_separator = self._create_binary()
     
@@ -303,9 +298,6 @@ class Glyconformer():
         for f in self.angles:
             profile = pd.read_csv("{}/fes_{}.dat".format(self.fepdir, f), 
                 delim_whitespace=True, names=["x", "y"])
-            print('..................')
-            print(profile)
-
 
             profmin = profile.index[profile['y'] == 0.0]
             profmin_value = profile.iloc[profmin[0], 0]
