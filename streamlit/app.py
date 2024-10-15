@@ -2,11 +2,12 @@ import csv
 import importlib
 import tempfile
 import streamlit as st
-import plumed
+import plumed # type: ignore
 # from glyconformer.lib import Glyconformer, Glycompare
-import pandas as pd
+import pandas as pd # type: ignore
 import os as os
 import sys
+from st_aggrid import AgGrid # type: ignore
 
 sys.path.append("/home/eberl/bachelor_project/GlyCONFORMER/glyconformer/")
 from lib import Glyconformer
@@ -16,8 +17,8 @@ from lib import Glyconformer
 
 def setSessionStates():
 
-    if 'glycan_state' not in st.session_state:
-        st.session_state['glycan_state'] = None
+    if 'glycan' not in st.session_state:
+        st.session_state['glycan'] = None
     if 'progress' not in st.session_state:
         st.session_state['progress'] = set()
         st.session_state['progress'].add(1)             # Progress-Step "1" ist bereits enthalten
@@ -93,10 +94,10 @@ def initialize_local_Glycan(glycantype: str):
 
 def on_change(selected_glycan: str):
     
-    st.session_state['glycan_state'] = selected_glycan
+    st.session_state['glycan'] = selected_glycan
 
     with tab_main1: 
-        initialize_local_Glycan(st.session_state['glycan_state'])
+        initialize_local_Glycan(st.session_state['glycan'])
 
 def change_opacity(element_class, index, opacity):
 
@@ -136,6 +137,15 @@ def custom_subheader(text: str):
     else:
         st.markdown(f"<h3 class='custom-subheader-inactive'>{text}</h3>", unsafe_allow_html=True)
 
+def extractAngles(colvar):
+
+    angles: list = []
+    for i in colvar.columns:
+        if i != "time" and "pseudo" not in i:
+            angles.append(i)
+
+    return angles
+
 def readDataframe(dataframe):
     
     # In Bytestring konvertieren
@@ -148,7 +158,34 @@ def readDataframe(dataframe):
         temp_file_path = temp_file.name
 
     colvar = plumed.read_as_pandas(temp_file_path)
-    colvar = colvar[['phi1_2', 'psi1_2', 'phi2_3', 'psi2_3', 'phi3_5', 'psi3_5', 'omega3_5', 'phi5_7', 'psi5_7', 'omega5_7', 'phi5_6', 'psi5_6', 'phi3_4', 'psi3_4']]
+
+    angles = extractAngles(colvar)
+
+    data = ['Apfel', 'Birne', 'Banane']
+
+    # DataFrame erstellen
+    df = pd.DataFrame({'Obst': data})
+
+    # gridOptions konfigurieren
+    gridOptions = {
+        'rowData': df,  # Daten als Liste von Dictionaries
+        'columnDefs': [
+            {'field': 'Obst', 'sortable': True, 'filter': True}
+        ],
+                'enableSorting': True,
+        'enableFilter': True,
+        'enableRowGroup': True,
+        'enableColResize': True,
+        'enableMultiSort': True
+    }
+
+
+    # AgGrid-Tabelle anzeigen
+    AgGrid(gridOptions)
+
+
+    st.table(angles)
+    colvar = colvar[angles]
     # Temporäre Datei löschen
     os.remove(temp_file_path)
 

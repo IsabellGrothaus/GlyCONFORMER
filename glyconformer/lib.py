@@ -4,19 +4,19 @@ __version__ = "1.0.1"
 __email__ = "grothaus@uni-bremen.de"
 __status__ = "Development"
 
-import pandas as pd
+import pandas as pd # type: ignore
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-from scipy.signal import argrelextrema
+import matplotlib.pyplot as plt # type: ignore
+import matplotlib.patches as mpatches # type: ignore
+from scipy.signal import argrelextrema # type: ignore
 import json
-import matplotlib.ticker as ticker
+import matplotlib.ticker as ticker # type: ignore
 import importlib.resources
 import csv
-from sklearn.decomposition import PCA
-from wpca import WPCA, EMPCA
+from sklearn.decomposition import PCA # type: ignore
+from wpca import WPCA, EMPCA # type: ignore
 import warnings
-import plumed
+import plumed # type: ignore
 
 # Suppress FutureWarning messages
 warnings.simplefilter(action='ignore', category=FutureWarning)
