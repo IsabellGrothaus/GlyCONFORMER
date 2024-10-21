@@ -193,7 +193,7 @@ class Glyconformer():
     def __init__(self, inputfile=None, length=None, glycantype=None,
                  angles=None, omega_angles=None, separator_index=None, 
                  separator=None, fepdir=None, order_max=None,
-                 order_min=None, weights=None, colvar=None):
+                 order_min=None, weights=None, colvar=None, fep_files=None):
         
         # Instance variables
         """
@@ -242,6 +242,7 @@ class Glyconformer():
             self.order_min = order_min
             self.maxima, self.minima = self._find_min_max() 
             self.weights = weights
+            self.fep_files = fep_files
             
             self.colvar, self.length = _create_colvar(colvar, length, self)
 
@@ -389,7 +390,7 @@ class Glyconformer():
         maxima_dict = {}
         minima_dict = {}
 
-        for f, value in self.angles.items():
+        for f, value in self.fep_files.items():
             profile = value
 
             profmin = profile.index[profile['y'] == 0.0]

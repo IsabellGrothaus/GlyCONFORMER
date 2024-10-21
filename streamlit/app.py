@@ -20,13 +20,14 @@ def setSessionStates():
     if 'glycan' not in st.session_state:
         st.session_state['glycan'] = None
     if 'progress' not in st.session_state:
-        st.session_state['progress'] = set()
-        st.session_state['progress'].add(1)             # Progress-Step "1" ist bereits enthalten
+        st.session_state['progress'] = []
 
     if 'dataframe' not in st.session_state:
         st.session_state['dataframe'] = None
-    if 'fep_files' not in st.session_state:
-        st.session_state['fep_files'] = {}
+    if 'angles' not in st.session_state:
+        st.session_state['angles'] = None
+    if 'fep' not in st.session_state:
+        st.session_state['fep'] = {}
 
 setSessionStates()
 
@@ -90,6 +91,27 @@ def initialize_local_Glycan(glycantype: str):
     st.write(Glycan.separator_index)
     st.write(Glycan.separator)
 
+def initialize_custom_Glycan(glycantype: str):
+
+    Glycan = Glyconformer(
+        inputfile =         None,
+
+        angles =            st.session_state['angles'], 
+        omega_angles =      readAnglesData("LIBRARY_GLYCANS.{}".format(glycantype), "omega_angles.dat"), 
+        separator_index =   readSeparatorData("LIBRARY_GLYCANS.{}".format(glycantype), "separator.dat")['separator_index'], 
+        separator =         readSeparatorData("LIBRARY_GLYCANS.{}".format(glycantype), "separator.dat")['separator'], 
+        fepdir =            None,
+        fep_files =         st.session_state['fep'],
+        colvar =            st.session_state['dataframe'], 
+        order_max =         5,
+        order_min =         5, 
+        weights =           None,
+
+    )
+
+    st.write(Glycan.colvar)
+
+
 # -------- local FUNCTIONS--------- #
 
 def on_change(selected_glycan: str):
@@ -137,6 +159,18 @@ def custom_subheader(text: str):
     else:
         st.markdown(f"<h3 class='custom-subheader-inactive'>{text}</h3>", unsafe_allow_html=True)
 
+def createKeyName(fileName: str):
+
+    fileName = fileName.removeprefix("fes_")
+    fileName = fileName.removesuffix(".dat")
+
+    return fileName
+
+def create_fep_directorie():
+    st.session_state['fep'].clear()
+    for angle in st.session_state['angles']:
+        st.session_state['fep'][angle] = []
+
 def extractAngles(colvar):
 
     angles: list = []
@@ -151,47 +185,25 @@ def readDataframe(dataframe):
     # In Bytestring konvertieren
     bytes_data: bytes = dataframe.getvalue()
 
-
     # In temporäre Datei schreiben
     with tempfile.NamedTemporaryFile(delete=False) as temp_file:
         temp_file.write(bytes_data)
         temp_file_path = temp_file.name
 
     colvar = plumed.read_as_pandas(temp_file_path)
+    st.session_state['angles'] = extractAngles(colvar)
 
-    angles = extractAngles(colvar)
+    colvar = colvar[st.session_state['angles']]
 
-    data = ['Apfel', 'Birne', 'Banane']
-
-    # DataFrame erstellen
-    df = pd.DataFrame({'Obst': data})
-
-    # gridOptions konfigurieren
-    gridOptions = {
-        'rowData': df,  # Daten als Liste von Dictionaries
-        'columnDefs': [
-            {'field': 'Obst', 'sortable': True, 'filter': True}
-        ],
-                'enableSorting': True,
-        'enableFilter': True,
-        'enableRowGroup': True,
-        'enableColResize': True,
-        'enableMultiSort': True
-    }
-
-
-    # AgGrid-Tabelle anzeigen
-    AgGrid(gridOptions)
-
-
-    st.table(angles)
-    colvar = colvar[angles]
     # Temporäre Datei löschen
     os.remove(temp_file_path)
 
     return colvar
 
 def checkProgress():
+    st.session_state['progress'].clear()  
+    st.session_state['progress'].append(1)             # Progress-Step "1" ist bereits enthalten
+
 
     custom_subheader("1. Select your dataframe")
 
@@ -204,7 +216,7 @@ def checkProgress():
 
         if dataframe is not None:
 
-            st.session_state['progress'].add(2)
+            st.session_state['progress'].append(2)
 
             st.session_state['dataframe'] = readDataframe(dataframe)
    
@@ -213,24 +225,37 @@ def checkProgress():
                  ''' '''
 
         else:
-            st.write("Test")
+            if len(st.session_state['progress']) > 1:
+                st.session_state['progress'].pop(1)
     
 
-    
+    st.write(st.session_state['progress'])
     custom_subheader("2. Select your fepfiles")
 
     if(2 in st.session_state['progress']):
-
-        dataframe = st.file_uploader(
-                                        "t..",
+       
+        fep_files = st.file_uploader(   "t..",
                                         label_visibility = "collapsed",
+                                        key = "fep_files",
+                                        accept_multiple_files = True,
         )
 
-        if dataframe is not None:
-            profile = pd.read_csv(dataframe, sep='\s+', names=["x", "y"])
-            st.write(profile)
-            st.session_state['fep_files'][dataframe.name] = profile
-            st.write(st.session_state['fep_files'][dataframe.name])
+        create_fep_directorie()
+
+        if fep_files is not None:
+            for file in fep_files:
+ 
+                if createKeyName(file.name) in st.session_state['fep'] and len(st.session_state['fep'][createKeyName(file.name)]) == 0:
+                    profile = pd.read_csv(file, sep='\s+', names=["x", "y"])
+                    st.session_state['fep'][createKeyName(file.name)].append(profile)
+                elif len(st.session_state['fep'][createKeyName(file.name)]) != 0:
+                    st.error(f'fep_file bereits vorhanden: {createKeyName(file.name)}')
+                else:
+                    st.error(f'fep_file nicht vorhanden: {createKeyName(file.name)}')
+
+        st.progress(len(st.session_state['fep']) * (1.0/len(st.session_state['angles'])), "progress ...")
+
+    st.write(st.session_state['fep'])
 
 
 
@@ -291,10 +316,8 @@ with st.form(key="my_form"):
     st.text_input("Name", key="name")
     st.form_submit_button("I'm here!", on_click=take_attendance)
 
-    
     -------
 
-    
     file_content = pd.read_csv(
                     dataframe_file, 
                     sep='\s+',              # \s+' -> mit Whitespace gertrennt. + -> (ein oder mehrmals)
@@ -305,4 +328,10 @@ with st.form(key="my_form"):
 
     st.write(file_content)
     st.write(file_content['col1'].to_numpy(), file_content['col2'].to_numpy())
+
+    -------
+
+    for key, value in st.session_state['fep'].items():
+        st.write(key)
+        st.write(value)
 '''
