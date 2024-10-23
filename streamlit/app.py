@@ -1,6 +1,7 @@
 import csv
 import importlib
 import tempfile
+import time
 import streamlit as st
 import plumed # type: ignore
 # from glyconformer.lib import Glyconformer, Glycompare
@@ -13,6 +14,11 @@ sys.path.append("/home/eberl/bachelor_project/GlyCONFORMER/glyconformer/")
 from lib import Glyconformer
 
 # -------- INITIALIZATION --------- #
+
+
+st.markdown("""
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.1.3/dist/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+""", unsafe_allow_html=True)
 
 
 def setSessionStates():
@@ -138,6 +144,26 @@ def change_opacity(element_class, index, opacity):
     # st.markdown("<script src='script.js'></script>", unsafe_allow_html=True)
     return None
 
+def createProgressBar(percentage: str):
+
+    return f"""
+        <div class="progress_container">
+            <div class='progress'>
+                <div class='progress-bar progress-bar-striped progress-bar-animated' role='progressbar' style='width: {percentage}%' aria-valuemin='0' aria-valuemax='100'>{percentage}%</div>
+            </div>
+        </div>
+        """
+
+def checkAmountOfExistingFeps():
+
+    count: int = 0
+
+    for item in st.session_state['fep'].values():
+        if item:
+            count += 1
+
+    return count
+
 def custom_subheader(text: str):
 
     '''
@@ -158,6 +184,10 @@ def custom_subheader(text: str):
         st.markdown(f"<h3 class='custom-subheader-active'>{text}</h3>", unsafe_allow_html=True)
     else:
         st.markdown(f"<h3 class='custom-subheader-inactive'>{text}</h3>", unsafe_allow_html=True)
+
+def createPercentage(startValue: int, endValue: int):
+
+    return int(round(startValue / endValue, 2) * 100)
 
 def createKeyName(fileName: str):
 
@@ -204,37 +234,43 @@ def checkProgress():
     st.session_state['progress'].clear()  
     st.session_state['progress'].append(1)             # Progress-Step "1" ist bereits enthalten
 
+    # ------- 1 ------- #
 
     custom_subheader("1. Select your dataframe")
 
     if(1 in st.session_state['progress']):
+        my_bar = st.progress(0)
 
         dataframe = st.file_uploader(
                                         "...",
                                         label_visibility = "collapsed",
-        )      
+                                        key = "dataframe_file",
+        )
+
 
         if dataframe is not None:
+            if True:
+                st.session_state['progress'].append(2)
+                my_bar.progress(createPercentage(1, 1))
 
-            st.session_state['progress'].append(2)
-
-            st.session_state['dataframe'] = readDataframe(dataframe)
-   
-            with tab_main2:
-                 # st.subheader(f"filename: {dataframe.name}")
-                 ''' '''
+                st.session_state['dataframe'] = readDataframe(dataframe)
+            else:
+                st.error("test")
 
         else:
-            if len(st.session_state['progress']) > 1:
-                st.session_state['progress'].pop(1)
+            st.session_state['progress'].clear()  
+            st.session_state['progress'].append(1)
     
 
-    st.write(st.session_state['progress'])
+    # ------- 2 ------- #
+
     custom_subheader("2. Select your fepfiles")
 
     if(2 in st.session_state['progress']):
        
-        fep_files = st.file_uploader(   "t..",
+        my_bar = st.progress(0)
+
+        fep_files = st.file_uploader(   "...",
                                         label_visibility = "collapsed",
                                         key = "fep_files",
                                         accept_multiple_files = True,
@@ -243,19 +279,32 @@ def checkProgress():
         create_fep_directorie()
 
         if fep_files is not None:
+            my_bar.progress(createPercentage(checkAmountOfExistingFeps(), len(st.session_state['fep'])))
             for file in fep_files:
  
                 if createKeyName(file.name) in st.session_state['fep'] and len(st.session_state['fep'][createKeyName(file.name)]) == 0:
                     profile = pd.read_csv(file, sep='\s+', names=["x", "y"])
                     st.session_state['fep'][createKeyName(file.name)].append(profile)
+
                 elif len(st.session_state['fep'][createKeyName(file.name)]) != 0:
                     st.error(f'fep_file bereits vorhanden: {createKeyName(file.name)}')
                 else:
                     st.error(f'fep_file nicht vorhanden: {createKeyName(file.name)}')
 
-        st.progress(len(st.session_state['fep']) * (1.0/len(st.session_state['angles'])), "progress ...")
+        else:
+            st.session_state['progress'].clear()  
+            st.session_state['progress'].append(1)
+            st.session_state['progress'].append(2)
+            
 
+    # ------- 3 ------- #
+
+    st.write(st.session_state['angles'])
     st.write(st.session_state['fep'])
+    st.write(st.session_state['progress'])
+
+    # st.markdown(createProgressBar(), unsafe_allow_html=True)
+    # st.markdown("<div id='progress_start'></div>", unsafe_allow_html=True)
 
 
 
@@ -268,7 +317,6 @@ with st.sidebar:
 
     with tab_sidebar1:
         checkProgress()
-
 
     with tab_sidebar2:
         st.subheader("select a dataset")

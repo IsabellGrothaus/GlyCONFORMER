@@ -8,6 +8,38 @@
     width: 50%;
 }
 
+/*
+div:has(> div.stMarkdown > div > #progress_start) + div { 
+    background-color: aqua;
+    position: fixed;
+    bottom: 0px;
+}
+*/
+
+/*
+[data-testid="stSidebarUserContent"] > div > div > div > div > .stTabs > div > div > div > div > div > div:last-child {
+    position: fixed;
+    bottom: 0px;
+    background-color: rgb(38, 39, 48);
+    height: 45px;
+    background: blue;
+    width: fit-content;
+}
+*/
+
+/*
+.progress {
+    position: relative;
+    top: 20px;
+    display: flex;
+    height: 0.6rem;
+    overflow: hidden;
+    font-size: .75rem;
+    background-color: #e9ecef;
+    border-radius: 1rem;
+    transition: width 1.2s ease;
+}
+*/
 
 .custom-subheader-active {
     opacity: var(--opacity_full);
