@@ -8,6 +8,15 @@
     width: 50%;
 }
 
+.stProgress {
+    display: flex;
+    align-items: baseline;
+}
+
+.stProgress > :first-child {
+    width: 40px;
+}
+
 /*
 div:has(> div.stMarkdown > div > #progress_start) + div { 
     background-color: aqua;

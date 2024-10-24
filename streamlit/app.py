@@ -159,7 +159,7 @@ def checkAmountOfExistingFeps():
     count: int = 0
 
     for item in st.session_state['fep'].values():
-        if item:
+        if item:        # ['element'] => True, [] => False
             count += 1
 
     return count
@@ -181,7 +181,7 @@ def custom_subheader(text: str):
 
 
     if(int(text[0]) in st.session_state['progress']):
-        st.markdown(f"<h3 class='custom-subheader-active'>{text}</h3>", unsafe_allow_html=True)
+        st.markdown(f"<h3 class='custom-subheader-active'>{text} </h3>", unsafe_allow_html=True)
     else:
         st.markdown(f"<h3 class='custom-subheader-inactive'>{text}</h3>", unsafe_allow_html=True)
 
@@ -224,6 +224,10 @@ def readDataframe(dataframe):
     st.session_state['angles'] = extractAngles(colvar)
 
     colvar = colvar[st.session_state['angles']]
+    colvar2 = colvar[['phi1_2', 'psi1_2', 'phi2_3', 'psi2_3', 'phi3_5', 'psi3_5', 'omega3_5', 'phi5_7', 'psi5_7', 'omega5_7', 'phi5_6', 'psi5_6', 'phi3_4', 'psi3_4']]
+    with tab_main2:
+        st.write(colvar)
+        st.write(colvar2)
 
     # Temporäre Datei löschen
     os.remove(temp_file_path)
@@ -239,21 +243,22 @@ def checkProgress():
     custom_subheader("1. Select your dataframe")
 
     if(1 in st.session_state['progress']):
-        my_bar = st.progress(0)
+        
+        my_bar = st.progress(0, text = "0/1")
 
-        dataframe = st.file_uploader(
+        file_upload = st.file_uploader(
                                         "...",
                                         label_visibility = "collapsed",
-                                        key = "dataframe_file",
+                                        key = "dataframe_upload",
         )
 
 
-        if dataframe is not None:
+        if file_upload is not None:
             if True:
                 st.session_state['progress'].append(2)
-                my_bar.progress(createPercentage(1, 1))
+                my_bar.progress(createPercentage(1, 1), text = "1/1")
 
-                st.session_state['dataframe'] = readDataframe(dataframe)
+                st.session_state['dataframe'] = readDataframe(file_upload)
             else:
                 st.error("test")
 
@@ -268,29 +273,27 @@ def checkProgress():
 
     if(2 in st.session_state['progress']):
        
-        my_bar = st.progress(0)
+        my_bar = st.progress(0, text = f'{checkAmountOfExistingFeps()}/{len(st.session_state['fep'])}')
+        create_fep_directorie()
 
-        fep_files = st.file_uploader(   "...",
+        file_upload = st.file_uploader( "...",
                                         label_visibility = "collapsed",
-                                        key = "fep_files",
+                                        key = "fep_upload",
                                         accept_multiple_files = True,
         )
 
-        create_fep_directorie()
+        if file_upload is not None:
+            for file in file_upload:
 
-        if fep_files is not None:
-            my_bar.progress(createPercentage(checkAmountOfExistingFeps(), len(st.session_state['fep'])))
-            for file in fep_files:
- 
-                if createKeyName(file.name) in st.session_state['fep'] and len(st.session_state['fep'][createKeyName(file.name)]) == 0:
+                if createKeyName(file.name) in st.session_state['fep'] and not st.session_state['fep'][createKeyName(file.name)]:       # wenn Winkel im 'dictionary' vorhanden && nicht belegt ist
                     profile = pd.read_csv(file, sep='\s+', names=["x", "y"])
                     st.session_state['fep'][createKeyName(file.name)].append(profile)
-
-                elif len(st.session_state['fep'][createKeyName(file.name)]) != 0:
-                    st.error(f'fep_file bereits vorhanden: {createKeyName(file.name)}')
+                elif createKeyName(file.name) in st.session_state['fep'] and st.session_state['fep'][createKeyName(file.name)]:
+                    st.error(f'fep_file bereits vorhanden: {createKeyName(file.name)}')     # wenn Winkel im 'dictionary' belegt ist
                 else:
-                    st.error(f'fep_file nicht vorhanden: {createKeyName(file.name)}')
+                    st.error(f'fep_file nicht vorhanden: {createKeyName(file.name)}')       # wenn Winkel im 'dictionary' nicht exisitert
 
+            my_bar.progress(createPercentage(checkAmountOfExistingFeps(), len(st.session_state['fep'])), text = f'{checkAmountOfExistingFeps()}/{len(st.session_state['fep'])}')
         else:
             st.session_state['progress'].clear()  
             st.session_state['progress'].append(1)
