@@ -106,7 +106,7 @@ def initialize_custom_Glycan(glycantype: str):
         omega_angles =      readAnglesData("LIBRARY_GLYCANS.{}".format(glycantype), "omega_angles.dat"), 
         separator_index =   readSeparatorData("LIBRARY_GLYCANS.{}".format(glycantype), "separator.dat")['separator_index'], 
         separator =         readSeparatorData("LIBRARY_GLYCANS.{}".format(glycantype), "separator.dat")['separator'], 
-        fepdir =            None,
+        fepdir =            "../LIBRARY_GLYCANS/{}".format(glycantype),
         fep_files =         st.session_state['fep'],
         colvar =            st.session_state['dataframe'], 
         order_max =         5,
@@ -154,12 +154,18 @@ def createProgressBar(percentage: str):
         </div>
         """
 
+def rewindProgress(number: int):
+    st.session_state['progress'].clear()  
+
+    for i in range(1, number + 1):
+        st.session_state['progress'].append(i)
+
 def checkAmountOfExistingFeps():
 
     count: int = 0
 
-    for item in st.session_state['fep'].values():
-        if item:        # ['element'] => True, [] => False
+    for key, value in st.session_state['fep'].items():
+        if value:        # ['element'] => True, [] => False
             count += 1
 
     return count
@@ -178,7 +184,6 @@ def custom_subheader(text: str):
             css_content = f.read().replace('--opacity: 50%;', '--opacity: 100%;')
             st.markdown(f"<style>{css_content}</style>", unsafe_allow_html=True)
     '''
-
 
     if(int(text[0]) in st.session_state['progress']):
         st.markdown(f"<h3 class='custom-subheader-active'>{text} </h3>", unsafe_allow_html=True)
@@ -250,6 +255,7 @@ def checkProgress():
                                         "...",
                                         label_visibility = "collapsed",
                                         key = "dataframe_upload",
+                                        
         )
 
 
@@ -263,8 +269,7 @@ def checkProgress():
                 st.error("test")
 
         else:
-            st.session_state['progress'].clear()  
-            st.session_state['progress'].append(1)
+            rewindProgress(1)
     
 
     # ------- 2 ------- #
@@ -273,8 +278,8 @@ def checkProgress():
 
     if(2 in st.session_state['progress']):
        
-        my_bar = st.progress(0, text = f'{checkAmountOfExistingFeps()}/{len(st.session_state['fep'])}')
         create_fep_directorie()
+        my_bar = st.progress(0, text = f'{checkAmountOfExistingFeps()}/{len(st.session_state['fep'])}')
 
         file_upload = st.file_uploader( "...",
                                         label_visibility = "collapsed",
@@ -282,11 +287,11 @@ def checkProgress():
                                         accept_multiple_files = True,
         )
 
-        if file_upload is not None:
+        if file_upload != []:
             for file in file_upload:
 
                 if createKeyName(file.name) in st.session_state['fep'] and not st.session_state['fep'][createKeyName(file.name)]:       # wenn Winkel im 'dictionary' vorhanden && nicht belegt ist
-                    profile = pd.read_csv(file, sep='\s+', names=["x", "y"])
+                    profile = pd.read_csv(file, delim_whitespace=True, names=["x", "y"])
                     st.session_state['fep'][createKeyName(file.name)].append(profile)
                 elif createKeyName(file.name) in st.session_state['fep'] and st.session_state['fep'][createKeyName(file.name)]:
                     st.error(f'fep_file bereits vorhanden: {createKeyName(file.name)}')     # wenn Winkel im 'dictionary' belegt ist
@@ -295,16 +300,20 @@ def checkProgress():
 
             my_bar.progress(createPercentage(checkAmountOfExistingFeps(), len(st.session_state['fep'])), text = f'{checkAmountOfExistingFeps()}/{len(st.session_state['fep'])}')
         else:
-            st.session_state['progress'].clear()  
-            st.session_state['progress'].append(1)
-            st.session_state['progress'].append(2)
+            rewindProgress(2)
             
 
     # ------- 3 ------- #
 
-    st.write(st.session_state['angles'])
     st.write(st.session_state['fep'])
     st.write(st.session_state['progress'])
+
+
+    if(checkAmountOfExistingFeps() == len(st.session_state['fep']) and 2 in st.session_state['progress']):
+        with tab_main3:
+            initialize_custom_Glycan("M5")
+            ''' '''
+
 
     # st.markdown(createProgressBar(), unsafe_allow_html=True)
     # st.markdown("<div id='progress_start'></div>", unsafe_allow_html=True)

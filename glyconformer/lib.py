@@ -230,8 +230,12 @@ class Glyconformer():
         # whether information are read from the LIBRARY_GLYCANS or from 
         # user input variables. 
 
-
         if glycantype is None:
+            self.fep_files : dict = fep_files
+            if(self.fep_files is not None):
+                print("------------------------------------------------------")
+                print(self.fep_files["phi1_2"])
+
             self.inputfile = inputfile
             self.angles = angles
             self.omega_angles = omega_angles
@@ -242,7 +246,7 @@ class Glyconformer():
             self.order_min = order_min
             self.maxima, self.minima = self._find_min_max() 
             self.weights = weights
-            self.fep_files = fep_files
+
             
             self.colvar, self.length = _create_colvar(colvar, length, self)
 
