@@ -217,6 +217,7 @@ def create_fep_directorie():
         st.session_state['fep'][angle] = []
 
 def extractAngles(colvar):
+    st.session_state['angles'].clear()
 
     for i in colvar.columns:
         if i != "time" and "pseudo" not in i:
@@ -319,7 +320,7 @@ def checkProgress():
         file_upload = st.file_uploader(
                                         "...",
                                         label_visibility = "collapsed",
-                                        key = "dataframe_upload",                           
+                                        key = "selector_upload",                           
         )
 
         if file_upload != None:
