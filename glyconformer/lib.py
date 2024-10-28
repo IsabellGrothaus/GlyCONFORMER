@@ -231,23 +231,19 @@ class Glyconformer():
         # user input variables. 
 
         if glycantype is None:
-            self.fep_files : dict = fep_files
-            if(self.fep_files is not None):
-                print("------------------------------------------------------")
-                print(self.fep_files["phi1_2"])
+            self.inputfile: str = inputfile                  # filepath
+            self.fepdir: str = fepdir                        # filepath
 
-            self.inputfile = inputfile
-            self.angles = angles
-            self.omega_angles = omega_angles
-            self.separator_index = separator_index
-            self.separator = separator
-            self.fepdir = fepdir
-            self.order_max = order_max
-            self.order_min = order_min
+            self.angles: list = angles
+            self.omega_angles: list = omega_angles
+            self.separator_index: list = separator_index
+            self.separator: list = separator
+            self.fep_files: dict = fep_files
+            self.order_max: int = order_max
+            self.order_min: int = order_min
+            self.weights: int = weights
+
             self.maxima, self.minima = self._find_min_max() 
-            self.weights = weights
-
-            
             self.colvar, self.length = _create_colvar(colvar, length, self)
 
 
@@ -300,9 +296,13 @@ class Glyconformer():
         maxima_dict = {}
         minima_dict = {}
 
-        for f in self.angles:
-            profile = pd.read_csv("{}/fes_{}.dat".format(self.fepdir, f), 
-                delim_whitespace=True, names=["x", "y"])
+        for f in self.fep_files.keys() | set(self.angles):
+            if f in self.fep_files:
+                profile = self.fep_files[f][0]
+            else:
+                profile = pd.read_csv("{}/fes_{}.dat".format(self.fepdir, f), 
+                                    delim_whitespace=True, names=["x", "y"])
+
 
             profmin = profile.index[profile['y'] == 0.0]
             profmin_value = profile.iloc[profmin[0], 0]
@@ -395,7 +395,7 @@ class Glyconformer():
         minima_dict = {}
 
         for f, value in self.fep_files.items():
-            profile = value
+            profile = value[0]
 
             profmin = profile.index[profile['y'] == 0.0]
             profmin_value = profile.iloc[profmin[0], 0]
@@ -789,11 +789,12 @@ class Glyconformer():
 
         fig, axs = plt.subplots(len(self.angles), figsize = (6,60), constrained_layout=True, )
 
+
         for i, f in zip(range(len(self.angles)),self.angles):
             if self.fepdir is not None:
                 profile = pd.read_csv("{}/fes_{}.dat".format(self.fepdir, f), delim_whitespace=True, names = ["x","y"])
             else:
-                ''' '''
+                profile = self.fep_files[f][0]
 
             axs[i].set_title('{}'.format(f),fontsize = 15)
             axs[i].set_xlabel("Torsion angle [rad]", fontsize = 12)
@@ -827,6 +828,8 @@ class Glyconformer():
                 axs[i].text(self.minima["{}".format(f)][3],30, self.label["{}".format(f)][3], fontsize = 12, c = co, weight='bold')
 
         plt.show()
+
+        return fig
 
     def cumulative_average(self,
                            simulation_length,

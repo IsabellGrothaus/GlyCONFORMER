@@ -31,7 +31,7 @@ def setSessionStates():
     if 'dataframe' not in st.session_state:
         st.session_state['dataframe'] = None
     if 'angles' not in st.session_state:
-        st.session_state['angles'] = None
+        st.session_state['angles'] = []
     if 'fep' not in st.session_state:
         st.session_state['fep'] = {}
 
@@ -80,43 +80,51 @@ def initialize_local_Glycan(glycantype: str):
 
     Glycan = Glyconformer(
         inputfile =         "../TUTORIAL/{}_example/{}_angles.dat".format(glycantype, glycantype),
+        fepdir =            "../LIBRARY_GLYCANS/{}".format(glycantype), 
 
         angles =            readAnglesData("LIBRARY_GLYCANS.{}".format(glycantype), "angles.dat"), 
         omega_angles =      readAnglesData("LIBRARY_GLYCANS.{}".format(glycantype), "omega_angles.dat"), 
         separator_index =   readSeparatorData("LIBRARY_GLYCANS.{}".format(glycantype), "separator.dat")['separator_index'], 
         separator =         readSeparatorData("LIBRARY_GLYCANS.{}".format(glycantype), "separator.dat")['separator'], 
-        fepdir =            "../LIBRARY_GLYCANS/{}".format(glycantype), 
+        fep_files =         {},
         order_max =         5,
         order_min =         5, 
         weights =           None,
 
+        colvar =            None,
+        length =            None
     )
  
     st.write(Glycan.colvar)
     st.write(Glycan.minima["phi1_2"][0])
     st.write(Glycan.separator_index)
     st.write(Glycan.separator)
+    st.pyplot(Glycan.validate_fep())
 
 def initialize_custom_Glycan(glycantype: str):
 
     Glycan = Glyconformer(
         inputfile =         None,
+        fepdir =            None,
 
         angles =            st.session_state['angles'], 
         omega_angles =      readAnglesData("LIBRARY_GLYCANS.{}".format(glycantype), "omega_angles.dat"), 
         separator_index =   readSeparatorData("LIBRARY_GLYCANS.{}".format(glycantype), "separator.dat")['separator_index'], 
         separator =         readSeparatorData("LIBRARY_GLYCANS.{}".format(glycantype), "separator.dat")['separator'], 
-        fepdir =            "../LIBRARY_GLYCANS/{}".format(glycantype),
         fep_files =         st.session_state['fep'],
-        colvar =            st.session_state['dataframe'], 
         order_max =         5,
         order_min =         5, 
         weights =           None,
 
+        colvar =            st.session_state['dataframe'], 
+        length =            None
     )
 
     st.write(Glycan.colvar)
-
+    st.write(Glycan.minima["phi1_2"][0])
+    st.write(Glycan.separator_index)
+    st.write(Glycan.separator)
+    st.pyplot(Glycan.validate_fep())
 
 # -------- local FUNCTIONS--------- #
 
@@ -159,6 +167,8 @@ def rewindProgress(number: int):
 
     for i in range(1, number + 1):
         st.session_state['progress'].append(i)
+
+    print(f"----------------------------- {st.session_state['progress']}")
 
 def checkAmountOfExistingFeps():
 
@@ -208,12 +218,9 @@ def create_fep_directorie():
 
 def extractAngles(colvar):
 
-    angles: list = []
     for i in colvar.columns:
         if i != "time" and "pseudo" not in i:
-            angles.append(i)
-
-    return angles
+            st.session_state['angles'].append(i)
 
 def readDataframe(dataframe):
     
@@ -226,7 +233,7 @@ def readDataframe(dataframe):
         temp_file_path = temp_file.name
 
     colvar = plumed.read_as_pandas(temp_file_path)
-    st.session_state['angles'] = extractAngles(colvar)
+    extractAngles(colvar)                       # füllt st.session_state['angles']
 
     colvar = colvar[st.session_state['angles']]
     colvar2 = colvar[['phi1_2', 'psi1_2', 'phi2_3', 'psi2_3', 'phi3_5', 'psi3_5', 'omega3_5', 'phi5_7', 'psi5_7', 'omega5_7', 'phi5_6', 'psi5_6', 'phi3_4', 'psi3_4']]
@@ -254,8 +261,7 @@ def checkProgress():
         file_upload = st.file_uploader(
                                         "...",
                                         label_visibility = "collapsed",
-                                        key = "dataframe_upload",
-                                        
+                                        key = "dataframe_upload",                           
         )
 
 
@@ -299,17 +305,31 @@ def checkProgress():
                     st.error(f'fep_file nicht vorhanden: {createKeyName(file.name)}')       # wenn Winkel im 'dictionary' nicht exisitert
 
             my_bar.progress(createPercentage(checkAmountOfExistingFeps(), len(st.session_state['fep'])), text = f'{checkAmountOfExistingFeps()}/{len(st.session_state['fep'])}')
+            if checkAmountOfExistingFeps() == len(st.session_state['fep']):
+                st.session_state['progress'].append(3)
         else:
             rewindProgress(2)
             
 
     # ------- 3 ------- #
 
-    st.write(st.session_state['fep'])
-    st.write(st.session_state['progress'])
+    custom_subheader("3. Select your Selectors")
+    if(3 in st.session_state['progress']):
+
+        file_upload = st.file_uploader(
+                                        "...",
+                                        label_visibility = "collapsed",
+                                        key = "dataframe_upload",                           
+        )
+
+        if file_upload != None:
+            ''' '''
+        else:
+            rewindProgress(3)
 
 
-    if(checkAmountOfExistingFeps() == len(st.session_state['fep']) and 2 in st.session_state['progress']):
+
+    if(checkAmountOfExistingFeps() == len(st.session_state['fep']) and 3 in st.session_state['progress']):
         with tab_main3:
             initialize_custom_Glycan("M5")
             ''' '''
