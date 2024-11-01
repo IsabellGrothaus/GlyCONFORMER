@@ -32,6 +32,8 @@ def setSessionStates():
         st.session_state['dataframe'] = None
     if 'angles' not in st.session_state:
         st.session_state['angles'] = []
+    if 'separators' not in st.session_state:
+        st.session_state['separators'] = {'separator_index': [], 'separator': []}
     if 'fep' not in st.session_state:
         st.session_state['fep'] = {}
 
@@ -65,6 +67,7 @@ def readAnglesData(path, file):
     return feature
 
 def readSeparatorData(path, file):
+
     dictionary = {'separator_index': [], 'separator': []}
 
     csv_reader = csv.reader(importlib.resources.open_text(path, file), delimiter=' ')
@@ -74,6 +77,11 @@ def readSeparatorData(path, file):
         dictionary['separator'].append(str(row[1]))
 
     return dictionary
+
+def readSeparatorsFromFileUpload(file):
+        for row in file:
+            st.session_state['separators']['separator_index'].append(int(row[0]))
+            st.session_state['separators']['separator'].append(str(row[1]))
 
 @st.cache_data                              # wenn der Glykan-String bereits abgerufen wurde, bezieht er die Daten aus dem Cache
 def initialize_local_Glycan(glycantype: str):
@@ -102,15 +110,20 @@ def initialize_local_Glycan(glycantype: str):
     st.pyplot(Glycan.validate_fep())
 
 def initialize_custom_Glycan(glycantype: str):
-
+    print("-------------- ############### --------------")
+    print(readSeparatorData("LIBRARY_GLYCANS.{}".format(glycantype), "separator.dat")['separator_index'])
+    print(readSeparatorData("LIBRARY_GLYCANS.{}".format(glycantype), "separator.dat")['separator'])
+    print("-------------- ############### --------------")
+    print(st.session_state['separators']['separator_index'])
+    print(st.session_state['separators']['separator'])
     Glycan = Glyconformer(
         inputfile =         None,
         fepdir =            None,
 
         angles =            st.session_state['angles'], 
         omega_angles =      readAnglesData("LIBRARY_GLYCANS.{}".format(glycantype), "omega_angles.dat"), 
-        separator_index =   readSeparatorData("LIBRARY_GLYCANS.{}".format(glycantype), "separator.dat")['separator_index'], 
-        separator =         readSeparatorData("LIBRARY_GLYCANS.{}".format(glycantype), "separator.dat")['separator'], 
+        separator_index =   st.session_state['separators']['separator_index'], 
+        separator =         st.session_state['separators']['separator'], 
         fep_files =         st.session_state['fep'],
         order_max =         5,
         order_min =         5, 
@@ -223,10 +236,10 @@ def extractAngles(colvar):
         if i != "time" and "pseudo" not in i:
             st.session_state['angles'].append(i)
 
-def readDataframe(dataframe):
+def readDataframe(uploaded_file):
     
     # In Bytestring konvertieren
-    bytes_data: bytes = dataframe.getvalue()
+    bytes_data: bytes = uploaded_file.getvalue()
 
     # In temporäre Datei schreiben
     with tempfile.NamedTemporaryFile(delete=False) as temp_file:
@@ -234,7 +247,7 @@ def readDataframe(dataframe):
         temp_file_path = temp_file.name
 
     colvar = plumed.read_as_pandas(temp_file_path)
-    extractAngles(colvar)                       # füllt st.session_state['angles']
+    extractAngles(colvar)                               # füllt st.session_state['angles']
 
     colvar = colvar[st.session_state['angles']]
     colvar2 = colvar[['phi1_2', 'psi1_2', 'phi2_3', 'psi2_3', 'phi3_5', 'psi3_5', 'omega3_5', 'phi5_7', 'psi5_7', 'omega5_7', 'phi5_6', 'psi5_6', 'phi3_4', 'psi3_4']]
@@ -314,7 +327,7 @@ def checkProgress():
 
     # ------- 3 ------- #
 
-    custom_subheader("3. Select your Selectors")
+    custom_subheader("3. Select your Separators")
     if(3 in st.session_state['progress']):
 
         file_upload = st.file_uploader(
@@ -324,13 +337,16 @@ def checkProgress():
         )
 
         if file_upload != None:
-            ''' '''
+            for row in file_upload:
+                st.session_state['separators']['separator_index'].append(int(row[0]))
+                st.session_state['separators']['separator'].append(row[1])
+            st.session_state['progress'].append(4)
         else:
             rewindProgress(3)
 
 
 
-    if(checkAmountOfExistingFeps() == len(st.session_state['fep']) and 3 in st.session_state['progress']):
+    if(4 in st.session_state['progress']):
         with tab_main3:
             initialize_custom_Glycan("M5")
             ''' '''

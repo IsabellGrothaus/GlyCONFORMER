@@ -244,12 +244,15 @@ class Glyconformer():
             self.weights: int = weights
 
             self.maxima, self.minima = self._find_min_max() 
+            print(self.maxima)
+            print("---------------------------------------------")
+            print(self.minima)
             self.colvar, self.length = _create_colvar(colvar, length, self)
 
 
         else:
             self.glycantype = glycantype
-            self.inputfile = "../TUTORIAL/{}_example/{}_angles.dat".format(self.glycantype,self.glycantype)
+            self.inputfile = "TUTORIAL/{}_example/{}_angles.dat".format(self.glycantype,self.glycantype)
 
             self.angles = _readfeature("LIBRARY_GLYCANS.{}".format(self.glycantype), "angles.dat")
             self.omega_angles = _readfeature("LIBRARY_GLYCANS.{}".format(self.glycantype), "omega_angles.dat")
@@ -815,6 +818,7 @@ class Glyconformer():
                 axs[i].axvline(self.maxima["{}".format(f)][0], c = co, linestyle = "--")
                 axs[i].axvline(self.maxima["{}".format(f)][1], c = co, linestyle = "--")
                 axs[i].text(self.minima["{}".format(f)][0],30, self.label["{}".format(f)][0], fontsize = 12, c = co, weight='bold')
+                print(f"--------------------------------------: {f}")
                 axs[i].text(self.minima["{}".format(f)][1],30, self.label["{}".format(f)][1], fontsize = 12, c = co, weight='bold')
                 axs[i].text(self.minima["{}".format(f)][2],30, self.label["{}".format(f)][2], fontsize = 12, c = co, weight='bold')
 
