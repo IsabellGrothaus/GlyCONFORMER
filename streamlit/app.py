@@ -31,9 +31,9 @@ def setSessionStates():
     if 'dataframe' not in st.session_state:
         st.session_state['dataframe'] = None
     if 'angles' not in st.session_state:
-        st.session_state['angles'] = []
+        st.session_state['angles'] = None
     if 'separators' not in st.session_state:
-        st.session_state['separators'] = {'separator_index': [], 'separator': []}
+        st.session_state['separators'] = None
     if 'fep' not in st.session_state:
         st.session_state['fep'] = {}
 
@@ -44,7 +44,7 @@ setSessionStates()
 
 tab_main1, tab_main2, tab_main3 = st.tabs(["test1", "test2", "test3"])
 
-with tab_main1:
+with tab_main1, tab_main2, tab_main3:
     st.header("Headline")
 
 
@@ -70,18 +70,20 @@ def readSeparatorData(path, file):
 
     dictionary = {'separator_index': [], 'separator': []}
 
-    csv_reader = csv.reader(importlib.resources.open_text(path, file), delimiter=' ')
-    
-    for row in csv_reader:
-        dictionary['separator_index'].append(int(row[0]))
-        dictionary['separator'].append(str(row[1]))
+    if path is not None:
+        profile = csv.reader(importlib.resources.open_text(path, file), delimiter=' ')      # liest aus einer lokalen Datei 
 
+        for row in profile:
+            dictionary['separator_index'].append(int(row[0]))
+            dictionary['separator'].append(str(row[1]))
+
+    else:
+        profile = pd.read_csv(file, sep=" ", header=None)           # liest aus einer hochgeladenen Datei 
+
+        dictionary['separator_index'] = profile[0].tolist()
+        dictionary['separator'] = profile[1].tolist()
+        
     return dictionary
-
-def readSeparatorsFromFileUpload(file):
-        for row in file:
-            st.session_state['separators']['separator_index'].append(int(row[0]))
-            st.session_state['separators']['separator'].append(str(row[1]))
 
 @st.cache_data                              # wenn der Glykan-String bereits abgerufen wurde, bezieht er die Daten aus dem Cache
 def initialize_local_Glycan(glycantype: str):
@@ -110,18 +112,13 @@ def initialize_local_Glycan(glycantype: str):
     st.pyplot(Glycan.validate_fep())
 
 def initialize_custom_Glycan(glycantype: str):
-    print("-------------- ############### --------------")
-    print(readSeparatorData("LIBRARY_GLYCANS.{}".format(glycantype), "separator.dat")['separator_index'])
-    print(readSeparatorData("LIBRARY_GLYCANS.{}".format(glycantype), "separator.dat")['separator'])
-    print("-------------- ############### --------------")
-    print(st.session_state['separators']['separator_index'])
-    print(st.session_state['separators']['separator'])
+
     Glycan = Glyconformer(
         inputfile =         None,
         fepdir =            None,
 
-        angles =            st.session_state['angles'], 
-        omega_angles =      readAnglesData("LIBRARY_GLYCANS.{}".format(glycantype), "omega_angles.dat"), 
+        angles =            st.session_state['angles']['angles'], 
+        omega_angles =      st.session_state['angles']['omega_angles'], 
         separator_index =   st.session_state['separators']['separator_index'], 
         separator =         st.session_state['separators']['separator'], 
         fep_files =         st.session_state['fep'],
@@ -226,15 +223,21 @@ def createKeyName(fileName: str):
 
 def create_fep_directorie():
     st.session_state['fep'].clear()
-    for angle in st.session_state['angles']:
+    for angle in st.session_state['angles']['angles']:
         st.session_state['fep'][angle] = []
 
 def extractAngles(colvar):
-    st.session_state['angles'].clear()
+
+    angles = {'angles': [], 'omega_angles': []}
 
     for i in colvar.columns:
         if i != "time" and "pseudo" not in i:
-            st.session_state['angles'].append(i)
+            angles['angles'].append(i)
+
+            if "omega" in i:
+                angles['omega_angles'].append(i)
+
+    return angles
 
 def readDataframe(uploaded_file):
     
@@ -247,14 +250,16 @@ def readDataframe(uploaded_file):
         temp_file_path = temp_file.name
 
     colvar = plumed.read_as_pandas(temp_file_path)
-    extractAngles(colvar)                               # füllt st.session_state['angles']
+    st.session_state['angles'] = extractAngles(colvar)                               # füllt 'angles' und 'omega_angles' in st.session_state['angles']
 
-    colvar = colvar[st.session_state['angles']]
+    colvar = colvar[st.session_state['angles']['angles']]
+    '''
     colvar2 = colvar[['phi1_2', 'psi1_2', 'phi2_3', 'psi2_3', 'phi3_5', 'psi3_5', 'omega3_5', 'phi5_7', 'psi5_7', 'omega5_7', 'phi5_6', 'psi5_6', 'phi3_4', 'psi3_4']]
     with tab_main2:
         st.write(colvar)
         st.write(colvar2)
-
+    '''
+    
     # Temporäre Datei löschen
     os.remove(temp_file_path)
 
@@ -330,6 +335,8 @@ def checkProgress():
     custom_subheader("3. Select your Separators")
     if(3 in st.session_state['progress']):
 
+        my_bar = st.progress(0, text = "0/1")
+
         file_upload = st.file_uploader(
                                         "...",
                                         label_visibility = "collapsed",
@@ -337,10 +344,10 @@ def checkProgress():
         )
 
         if file_upload != None:
-            for row in file_upload:
-                st.session_state['separators']['separator_index'].append(int(row[0]))
-                st.session_state['separators']['separator'].append(row[1])
+            st.session_state['separators'] = readSeparatorData(None, file_upload)
+
             st.session_state['progress'].append(4)
+            my_bar.progress(createPercentage(1, 1), text = "1/1")
         else:
             rewindProgress(3)
 

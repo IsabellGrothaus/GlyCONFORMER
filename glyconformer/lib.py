@@ -244,9 +244,9 @@ class Glyconformer():
             self.weights: int = weights
 
             self.maxima, self.minima = self._find_min_max() 
-            print(self.maxima)
+            print(f"maxima: {self.maxima}")
             print("---------------------------------------------")
-            print(self.minima)
+            print(f"minima: {self.minima}")
             self.colvar, self.length = _create_colvar(colvar, length, self)
 
 
