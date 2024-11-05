@@ -17,6 +17,25 @@
     width: 40px;
 }
 
+section:last-child {
+    position: relative;
+}
+
+div:has(> div.stMarkdown > div > p > i) {
+    height: 650px;
+}
+
+div.stMarkdown:has(> div > p > i) {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+}
+
+i {
+    scale: 5;
+    opacity: 0.1;
+}
+
 /*
 div:has(> div.stMarkdown > div > #progress_start) + div { 
     background-color: aqua;

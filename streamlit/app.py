@@ -18,6 +18,7 @@ from lib import Glyconformer
 
 st.markdown("""
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.1.3/dist/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
 """, unsafe_allow_html=True)
 
 
@@ -27,6 +28,10 @@ def setSessionStates():
         st.session_state['glycan'] = None
     if 'progress' not in st.session_state:
         st.session_state['progress'] = []
+
+    if 'request_state' not in st.session_state:
+        st.session_state['request_state'] = None
+
 
     if 'dataframe' not in st.session_state:
         st.session_state['dataframe'] = None
@@ -42,14 +47,30 @@ setSessionStates()
 
 # -------- MAIN PAGE --------- #
 
-tab_main1, tab_main2, tab_main3 = st.tabs(["test1", "test2", "test3"])
+container = st.container()
 
-with tab_main1, tab_main2, tab_main3:
-    st.header("Headline")
+def buildHUD():
+    if st.session_state['request_state'] is not None:
+
+        with container:
+            tab1, tab2 = st.tabs(["test1", "test2"])
+
+            match st.session_state['request_state']:
+                case 'custom':
+                    with tab1:
+                        initialize_custom_Glycan()
+
+                case 'local':
+                    with tab1:
+                        initialize_local_Glycan(st.session_state['glycan'])
+
+
+    else:
+        with container:
+            st.markdown("<i class='fa-solid fa-solid fa-flask-vial'></i>", unsafe_allow_html=True)
 
 
 # -------- local FUNCTIONS--------- #
-
 
 def loadLocalGlycans(): 
 
@@ -111,7 +132,7 @@ def initialize_local_Glycan(glycantype: str):
     st.write(Glycan.separator)
     st.pyplot(Glycan.validate_fep())
 
-def initialize_custom_Glycan(glycantype: str):
+def initialize_custom_Glycan():
 
     Glycan = Glyconformer(
         inputfile =         None,
@@ -136,14 +157,13 @@ def initialize_custom_Glycan(glycantype: str):
     st.write(Glycan.separator)
     st.pyplot(Glycan.validate_fep())
 
+
 # -------- local FUNCTIONS--------- #
 
-def on_change(selected_glycan: str):
-    
-    st.session_state['glycan'] = selected_glycan
+def on_change():
 
-    with tab_main1: 
-        initialize_local_Glycan(st.session_state['glycan'])
+    st.session_state['request_state'] = 'local'
+
 
 def change_opacity(element_class, index, opacity):
 
@@ -178,7 +198,7 @@ def rewindProgress(number: int):
     for i in range(1, number + 1):
         st.session_state['progress'].append(i)
 
-    print(f"----------------------------- {st.session_state['progress']}")
+    # print(f"----------------------------- {st.session_state['progress']}")
 
 def checkAmountOfExistingFeps():
 
@@ -253,19 +273,18 @@ def readDataframe(uploaded_file):
     st.session_state['angles'] = extractAngles(colvar)                               # füllt 'angles' und 'omega_angles' in st.session_state['angles']
 
     colvar = colvar[st.session_state['angles']['angles']]
-    '''
-    colvar2 = colvar[['phi1_2', 'psi1_2', 'phi2_3', 'psi2_3', 'phi3_5', 'psi3_5', 'omega3_5', 'phi5_7', 'psi5_7', 'omega5_7', 'phi5_6', 'psi5_6', 'phi3_4', 'psi3_4']]
-    with tab_main2:
-        st.write(colvar)
-        st.write(colvar2)
-    '''
-    
+
+    # colvar2 = colvar[['phi1_2', 'psi1_2', 'phi2_3', 'psi2_3', 'phi3_5', 'psi3_5', 'omega3_5', 'phi5_7', 'psi5_7', 'omega5_7', 'phi5_6', 'psi5_6', 'phi3_4', 'psi3_4']]
+
+
     # Temporäre Datei löschen
     os.remove(temp_file_path)
 
     return colvar
 
 def checkProgress():
+    is_completed: bool = False
+
     st.session_state['progress'].clear()  
     st.session_state['progress'].append(1)             # Progress-Step "1" ist bereits enthalten
 
@@ -333,6 +352,7 @@ def checkProgress():
     # ------- 3 ------- #
 
     custom_subheader("3. Select your Separators")
+
     if(3 in st.session_state['progress']):
 
         my_bar = st.progress(0, text = "0/1")
@@ -346,19 +366,18 @@ def checkProgress():
         if file_upload != None:
             st.session_state['separators'] = readSeparatorData(None, file_upload)
 
-            st.session_state['progress'].append(4)
             my_bar.progress(createPercentage(1, 1), text = "1/1")
+
+            is_completed = True
+
         else:
             rewindProgress(3)
 
 
+    if st.button("start", use_container_width = True, disabled = not is_completed):
+        st.session_state['request_state'] = 'custom'
 
-    if(4 in st.session_state['progress']):
-        with tab_main3:
-            initialize_custom_Glycan("M5")
-            ''' '''
-
-
+        
     # st.markdown(createProgressBar(), unsafe_allow_html=True)
     # st.markdown("<div id='progress_start'></div>", unsafe_allow_html=True)
 
@@ -366,27 +385,33 @@ def checkProgress():
 
 # -------- SIDEBAR --------- #
 
-
 with st.sidebar:
 
     tab_sidebar1, tab_sidebar2 = st.tabs(["User Input", "Preselection"])
 
     with tab_sidebar1:
         checkProgress()
+            
 
     with tab_sidebar2:
         st.subheader("select a dataset")
 
-        selected_glycan = st.selectbox(
-                                    "...",
-                                    loadLocalGlycans(), 
-                                    index = None,                                           # initialisiert eine leere Auswahlbox
-                                    label_visibility = "collapsed",
-                                    placeholder = "choose one of the following glycans"
+        st.session_state['glycan'] = st.selectbox(
+                                        "...",
+                                        loadLocalGlycans(), 
+                                        index = None,                                       # initialisiert eine leere Auswahlbox                                           
+                                        label_visibility = "collapsed",
+                                        key = "glycans_select",
+                                        placeholder = "choose one of the following glycans",
+                                        on_change = on_change
         )
 
-        if selected_glycan is not None:
-            on_change(selected_glycan)
+
+        if st.session_state['glycan'] is None and st.session_state['request_state'] is not 'custom':
+            st.session_state['request_state'] = None
+
+        
+    buildHUD()
 
 
 # -------- ### --------- #
