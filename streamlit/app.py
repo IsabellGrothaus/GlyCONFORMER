@@ -30,7 +30,9 @@ def setSessionStates():
         st.session_state['progress'] = []
 
     if 'request_state' not in st.session_state:
-        st.session_state['request_state'] = None
+        st.session_state['request_state'] = False
+    if 'request_access' not in st.session_state:
+        st.session_state['request_access'] = False
 
 
     if 'dataframe' not in st.session_state:
@@ -50,20 +52,22 @@ setSessionStates()
 container = st.container()
 
 def buildHUD():
-    if st.session_state['request_state'] is not None:
+    if st.session_state['request_state']:
+
+        Glycan = st.session_state['glycan']
 
         with container:
+            st.header("Testheader")
+
             tab1, tab2 = st.tabs(["test1", "test2"])
 
-            match st.session_state['request_state']:
-                case 'custom':
-                    with tab1:
-                        initialize_custom_Glycan()
-
-                case 'local':
-                    with tab1:
-                        initialize_local_Glycan(st.session_state['glycan'])
-
+            with tab1:
+                st.write(Glycan.colvar)
+                st.write(Glycan.minima["phi1_2"][0])
+                st.write(Glycan.separator_index)
+                st.write(Glycan.separator)
+                    
+                st.pyplot(Glycan.robust_validate_fep())
 
     else:
         with container:
@@ -108,6 +112,7 @@ def readSeparatorData(path, file):
 
 @st.cache_data                              # wenn der Glykan-String bereits abgerufen wurde, bezieht er die Daten aus dem Cache
 def initialize_local_Glycan(glycantype: str):
+    st.session_state['request_state'] = True
 
     Glycan = Glyconformer(
         inputfile =         "../TUTORIAL/{}_example/{}_angles.dat".format(glycantype, glycantype),
@@ -125,14 +130,11 @@ def initialize_local_Glycan(glycantype: str):
         colvar =            None,
         length =            None
     )
- 
-    st.write(Glycan.colvar)
-    st.write(Glycan.minima["phi1_2"][0])
-    st.write(Glycan.separator_index)
-    st.write(Glycan.separator)
-    st.pyplot(Glycan.validate_fep())
+
+    return Glycan
 
 def initialize_custom_Glycan():
+    st.session_state['request_state'] = True
 
     Glycan = Glyconformer(
         inputfile =         None,
@@ -151,19 +153,15 @@ def initialize_custom_Glycan():
         length =            None
     )
 
-    st.write(Glycan.colvar)
-    st.write(Glycan.minima["phi1_2"][0])
-    st.write(Glycan.separator_index)
-    st.write(Glycan.separator)
-    st.pyplot(Glycan.validate_fep())
+    return Glycan
+
 
 
 # -------- local FUNCTIONS--------- #
 
 def on_change():
 
-    st.session_state['request_state'] = 'local'
-
+    st.session_state['request_access'] = True
 
 def change_opacity(element_class, index, opacity):
 
@@ -363,24 +361,40 @@ def checkProgress():
                                         key = "selector_upload",                           
         )
 
-        if file_upload != None:
+        if file_upload is not None:
             st.session_state['separators'] = readSeparatorData(None, file_upload)
 
             my_bar.progress(createPercentage(1, 1), text = "1/1")
 
             is_completed = True
-
         else:
             rewindProgress(3)
 
 
     if st.button("start", use_container_width = True, disabled = not is_completed):
-        st.session_state['request_state'] = 'custom'
+        st.session_state['glycan'] = initialize_custom_Glycan()
 
+    wert = st.select_slider('Wähle einen Wert', options=range(5, 101))
         
     # st.markdown(createProgressBar(), unsafe_allow_html=True)
     # st.markdown("<div id='progress_start'></div>", unsafe_allow_html=True)
 
+def checkSelect():
+    st.subheader("1. Select a dataset")
+
+    selected_glycan = st.selectbox(
+                                    "...",
+                                    loadLocalGlycans(), 
+                                    index = None,                              # initialisiert eine leere Auswahlbox                                           
+                                    label_visibility = "collapsed",
+                                    key = "glycans_select",
+                                    placeholder = "choose one of the following glycans",
+                                    on_change = on_change
+    )
+
+    if selected_glycan is not None and st.session_state['request_access']:               # falls Eintrag Glycan ist UND gewählt wurde -> Initialisierung ist möglich
+        st.session_state['glycan'] = initialize_local_Glycan(selected_glycan)
+        st.session_state['request_access'] = False
 
 
 # -------- SIDEBAR --------- #
@@ -394,22 +408,8 @@ with st.sidebar:
             
 
     with tab_sidebar2:
-        st.subheader("select a dataset")
-
-        st.session_state['glycan'] = st.selectbox(
-                                        "...",
-                                        loadLocalGlycans(), 
-                                        index = None,                                       # initialisiert eine leere Auswahlbox                                           
-                                        label_visibility = "collapsed",
-                                        key = "glycans_select",
-                                        placeholder = "choose one of the following glycans",
-                                        on_change = on_change
-        )
-
-
-        if st.session_state['glycan'] is None and st.session_state['request_state'] is not 'custom':
-            st.session_state['request_state'] = None
-
+        checkSelect()
+        
         
     buildHUD()
 

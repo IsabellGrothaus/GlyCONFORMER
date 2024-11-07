@@ -243,10 +243,7 @@ class Glyconformer():
             self.order_min: int = order_min
             self.weights: int = weights
 
-            self.maxima, self.minima = self._find_min_max() 
-            print(f"maxima: {self.maxima}")
-            print("---------------------------------------------")
-            print(f"minima: {self.minima}")
+            self.maxima, self.minima = self._find_min_max()
             self.colvar, self.length = _create_colvar(colvar, length, self)
 
 
@@ -367,99 +364,33 @@ class Glyconformer():
 
         return maxima_dict, minima_dict
     
-    def _find_min_max_extend(self):
-        """ 
-        Finds minima and maxima of a 1D array read from file.
+    def robust_find_maxima_minima(self):
+        """
+        Finds maxima and minima in profiles, handling potential errors gracefully.
 
-        Function reading in the free energy profiles (as arrays 
-        from fes_*.dat files) of each feature (torsion angle) and 
-        determining the maxima and minima of the array. The minima 
-        array is altered in a way that an array with 2 maxima 
-        corresponds to 3 minima, considering periodicity.
+        Iteratively adjusts `self.order_max` and `self.order_min` if errors occur,
+        starting from 8 and decreasing to 2.
 
-        Parameters
-        ----------
-        
-        Raises
-        ------
-        ValueError
-            If free energy has more than 4 minimas, the algorithm can
-            not handle it anymore.
-
-        Returns
-        -------
-        maxmima_dict : dict
-            Dictionary with features as keys and maxima points as values
-        minima_dict : dict
-            Dictionary with features as keys and minima points as values
+        Returns:
+            tuple: A tuple containing the maxima and minima dictionaries.
         """
 
-        maxima_dict = {}
-        minima_dict = {}
+        for order_max in range(8, 1, -1):
+            for order_min in range(8, 1, -1):
 
-        for f, value in self.fep_files.items():
-            profile = value[0]
+                try:
+                    maxima_dict, minima_dict = self._find_min_max()
+                    return maxima_dict, minima_dict
+                except ValueError as e:
+                    print(f"Error occurred with order_max={self.order_max}, order_min={self.order_min}: {e}")
+                    self.order_max = order_max
+                    self.order_min = order_min
+                    print(f"Try with order_max={self.order_max}, order_min={self.order_min}: {e}")
+                    continue  # Try the next combination of orders
 
-            profmin = profile.index[profile['y'] == 0.0]
-            profmin_value = profile.iloc[profmin[0], 0]
-            p1 = profile.iloc[:profmin[0], :]
-            p2 = profile.iloc[profmin[0]:, :]
-            p = pd.concat([p2, p1])
-            p = p.to_numpy()
-
-            maxima = argrelextrema(p[:, 1], np.greater, order=self.order_max)
-            minima = argrelextrema(p[:, 1], np.less, order=self.order_min)
-
-            if len(maxima[0]) == 0:
-                maxima_dict["{}".format(f)] = [0]
-            elif len(maxima[0]) == 1:
-                maxima_dict["{}".format(f)] = [p[maxima[0][0], [0]].item()]
-            elif len(maxima[0]) == 2:
-                x = [p[maxima[0][0], [0]].item(), p[maxima[0][1], [0]].item()]
-                x.sort()
-                maxima_dict["{}".format(f)] = x
-            elif len(maxima[0]) == 3:
-                x = [p[maxima[0][0], [0]].item(), p[maxima[0][1], [0]].item(), p[maxima[0][2], [0]].item()]
-                x.sort()
-                maxima_dict["{}".format(f)] = x
-
-            if len(minima[0]) == 0:
-                minima_dict["{}".format(f)] = [profmin_value]
-
-            elif len(minima[0]) == 1:   
-                x = [profmin_value, p[minima[0][0], [0]].item()]
-                x.sort()
-
-                test = -3.5 <= x[0] <= maxima_dict["{}".format(f)][0]
-
-                if test == True:                                  
-                    x = [x[0], x[1], x[0]] 
-                    minima_dict["{}".format(f)] = x
-
-                else:
-                    x = [x[1], x[0], x[1]] 
-                    minima_dict["{}".format(f)] = x    
-
-
-            elif len(minima[0]) == 2:
-                x = [profmin_value, p[minima[0][0],[0]].item(), p[minima[0][1],[0]].item()]
-                x.sort()
-
-                test = -3.5 <= x[0] <= maxima_dict["{}".format(f)][0]
-
-                if test == True:                                  
-                    x = [x[0],x[1],x[2],x[0]] 
-                    minima_dict["{}".format(f)] = x
-
-                else:
-                    x = [x[2],x[0],x[1],x[2]] 
-                    minima_dict["{}".format(f)] = x                     
-
-            elif len(minima[0]) >= 3:
-                raise ValueError('More than 3 minima detected')
-
-        return maxima_dict, minima_dict
-
+        # If no combination of orders works, raise a final error
+        raise ValueError("Could not find suitable maxima and minima for any order combination.")
+    
     def _label_min(self):
         """
         Function that labels minima by their corresponding IUPAC name.
@@ -818,7 +749,7 @@ class Glyconformer():
                 axs[i].axvline(self.maxima["{}".format(f)][0], c = co, linestyle = "--")
                 axs[i].axvline(self.maxima["{}".format(f)][1], c = co, linestyle = "--")
                 axs[i].text(self.minima["{}".format(f)][0],30, self.label["{}".format(f)][0], fontsize = 12, c = co, weight='bold')
-                print(f"--------------------------------------: {f}")
+                # print(f"--------------------------------------: {f}")
                 axs[i].text(self.minima["{}".format(f)][1],30, self.label["{}".format(f)][1], fontsize = 12, c = co, weight='bold')
                 axs[i].text(self.minima["{}".format(f)][2],30, self.label["{}".format(f)][2], fontsize = 12, c = co, weight='bold')
 
@@ -834,6 +765,19 @@ class Glyconformer():
         plt.show()
 
         return fig
+
+    def robust_validate_fep(self):
+
+        for order_depth in range(1, 4):
+            try:
+                fig = self.validate_fep()
+
+                return fig
+            except IndexError:
+                print(f"IndexError with order_max: {self.order_max} and 'order_min': {self.order_min} occured: Try again with: {5 - order_depth}/{5 - order_depth}")
+                self.order_max = 5 - order_depth
+                self.order_min = 5 - order_depth
+                self.maxima, self.minima = self._find_min_max()
 
     def cumulative_average(self,
                            simulation_length,
