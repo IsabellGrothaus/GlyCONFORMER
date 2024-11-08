@@ -43,6 +43,8 @@ def setSessionStates():
         st.session_state['separators'] = None
     if 'fep' not in st.session_state:
         st.session_state['fep'] = {}
+    if 'length' not in st.session_state:
+        st.session_state['length'] = None
 
 setSessionStates()
 
@@ -55,9 +57,9 @@ def buildHUD():
     if st.session_state['request_state']:
 
         Glycan = st.session_state['glycan']
-
+        
         with container:
-            st.header("Testheader")
+            st.header(f"Data for: {Glycan.glycan_name}")
 
             tab1, tab2 = st.tabs(["test1", "test2"])
 
@@ -86,7 +88,8 @@ def loadLocalGlycans():
     return local_glycans
 
 def readAnglesData(path, file):
-    feature = importlib.resources.read_text(path, file)
+    with importlib.resources.files(path).joinpath(file).open() as f:
+        feature = f.read()
     feature = feature.split()
 
     return feature
@@ -110,11 +113,12 @@ def readSeparatorData(path, file):
         
     return dictionary
 
-@st.cache_data                              # wenn der Glykan-String bereits abgerufen wurde, bezieht er die Daten aus dem Cache
+# @st.cache_data                              # wenn der Glykan-String bereits abgerufen wurde, bezieht er die Daten aus dem Cache
 def initialize_local_Glycan(glycantype: str):
     st.session_state['request_state'] = True
 
     Glycan = Glyconformer(
+        glycan_name =       glycantype,
         inputfile =         "../TUTORIAL/{}_example/{}_angles.dat".format(glycantype, glycantype),
         fepdir =            "../LIBRARY_GLYCANS/{}".format(glycantype), 
 
@@ -133,24 +137,25 @@ def initialize_local_Glycan(glycantype: str):
 
     return Glycan
 
-def initialize_custom_Glycan():
+def initialize_custom_Glycan(glycantype: str):
     st.session_state['request_state'] = True
 
     Glycan = Glyconformer(
+        glycan_name =       glycantype,
         inputfile =         None,
         fepdir =            None,
 
-        angles =            st.session_state['angles']['angles'], 
-        omega_angles =      st.session_state['angles']['omega_angles'], 
-        separator_index =   st.session_state['separators']['separator_index'], 
-        separator =         st.session_state['separators']['separator'], 
-        fep_files =         st.session_state['fep'],
+        angles =            st.session_state['angles']['angles'].copy(), 
+        omega_angles =      st.session_state['angles']['omega_angles'].copy(), 
+        separator_index =   st.session_state['separators']['separator_index'].copy(), 
+        separator =         st.session_state['separators']['separator'].copy(), 
+        fep_files =         st.session_state['fep'].copy(),
         order_max =         5,
         order_min =         5, 
         weights =           None,
 
-        colvar =            st.session_state['dataframe'], 
-        length =            None
+        colvar =            st.session_state['dataframe'].copy(), 
+        length =            st.session_state['length']
     )
 
     return Glycan
@@ -189,6 +194,10 @@ def createProgressBar(percentage: str):
             </div>
         </div>
         """
+
+def determineLength(value: int):
+
+    return int(len(st.session_state['dataframe']) * (value/100))
 
 def rewindProgress(number: int):
     st.session_state['progress'].clear()  
@@ -362,6 +371,7 @@ def checkProgress():
         )
 
         if file_upload is not None:
+            st.session_state['progress'].append(4)
             st.session_state['separators'] = readSeparatorData(None, file_upload)
 
             my_bar.progress(createPercentage(1, 1), text = "1/1")
@@ -371,13 +381,22 @@ def checkProgress():
             rewindProgress(3)
 
 
-    if st.button("start", use_container_width = True, disabled = not is_completed):
-        st.session_state['glycan'] = initialize_custom_Glycan()
+    # ------- 4 ------- #
 
-    wert = st.select_slider('Wähle einen Wert', options=range(5, 101))
-        
-    # st.markdown(createProgressBar(), unsafe_allow_html=True)
-    # st.markdown("<div id='progress_start'></div>", unsafe_allow_html=True)
+    custom_subheader("4. Select your Specifics (optional)")
+
+    if(4 in st.session_state['progress']):
+        slider_value = st.select_slider('Size', options = list(range(10, 101, 10)), value = 100)
+        st.session_state['length'] = determineLength(slider_value)
+
+    else:
+        rewindProgress(3)
+
+
+    # ------- BUTTON ------- #
+
+    if st.button("start", use_container_width = True, disabled = not is_completed):
+        st.session_state['glycan'] = initialize_custom_Glycan(st.session_state['dataframe_upload'].name)
 
 def checkSelect():
     st.subheader("1. Select a dataset")

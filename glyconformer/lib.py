@@ -193,7 +193,7 @@ class Glyconformer():
     def __init__(self, inputfile=None, length=None, glycantype=None,
                  angles=None, omega_angles=None, separator_index=None, 
                  separator=None, fepdir=None, order_max=None,
-                 order_min=None, weights=None, colvar=None, fep_files=None):
+                 order_min=None, weights=None, colvar=None, fep_files=None, glycan_name=None):
         
         # Instance variables
         """
@@ -231,6 +231,7 @@ class Glyconformer():
         # user input variables. 
 
         if glycantype is None:
+            self.glycan_name: str = glycan_name
             self.inputfile: str = inputfile                  # filepath
             self.fepdir: str = fepdir                        # filepath
 

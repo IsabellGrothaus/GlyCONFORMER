@@ -8,12 +8,12 @@
     width: 50%;
 }
 
-.stProgress {
+.stProgress, .stSlider {
     display: flex;
     align-items: baseline;
 }
 
-.stProgress > :first-child {
+.stProgress > :first-child, .stSlider > :first-child  {
     width: 40px;
 }
 
