@@ -59,17 +59,22 @@ def buildHUD():
         Glycan = st.session_state['glycan']
         
         with container:
-            st.header(f"Data for: {Glycan.glycan_name}")
-
+            st.header(f"Data for: {Glycan.glycantype}")
             tab1, tab2 = st.tabs(["test1", "test2"])
 
             with tab1:
                 st.write(Glycan.colvar)
+                st.write(st.session_state['separators'])
                 st.write(Glycan.minima["phi1_2"][0])
                 st.write(Glycan.separator_index)
                 st.write(Glycan.separator)
                     
                 st.pyplot(Glycan.robust_validate_fep())
+            with tab2:
+                st.pyplot(Glycan.pca(biplot = True))
+                st.write(Glycan.distribution())
+                st.pyplot(Glycan.pca_fep())
+                st.pyplot(Glycan.cumulative_average(simulation_length = 500))
 
     else:
         with container:
@@ -98,18 +103,19 @@ def readSeparatorData(path, file):
 
     dictionary = {'separator_index': [], 'separator': []}
 
-    if path is not None:
-        profile = csv.reader(importlib.resources.open_text(path, file), delimiter=' ')      # liest aus einer lokalen Datei 
+    if path is not None:            # liest aus einer lokalen Datei 
+        with importlib.resources.files(path).joinpath(file).open('r') as f:         # öffnet Datei im Lesemodus 'r'
+            reader = csv.reader(f, delimiter=' ')      
 
-        for row in profile:
-            dictionary['separator_index'].append(int(row[0]))
-            dictionary['separator'].append(str(row[1]))
+            for row in reader:
+                dictionary['separator_index'].append(int(row[0]))
+                dictionary['separator'].append(str(row[1]))
 
-    else:
-        profile = pd.read_csv(file, sep=" ", header=None)           # liest aus einer hochgeladenen Datei 
+    else:                           # liest aus einer hochgeladenen Datei 
+        reader = pd.read_csv(file, sep=" ", header=None)           
 
-        dictionary['separator_index'] = profile[0].tolist()
-        dictionary['separator'] = profile[1].tolist()
+        dictionary['separator_index'] = reader[0].tolist()
+        dictionary['separator'] = reader[1].tolist()
         
     return dictionary
 
@@ -118,7 +124,7 @@ def initialize_local_Glycan(glycantype: str):
     st.session_state['request_state'] = True
 
     Glycan = Glyconformer(
-        glycan_name =       glycantype,
+        glycantype =        glycantype,
         inputfile =         "../TUTORIAL/{}_example/{}_angles.dat".format(glycantype, glycantype),
         fepdir =            "../LIBRARY_GLYCANS/{}".format(glycantype), 
 
@@ -141,7 +147,7 @@ def initialize_custom_Glycan(glycantype: str):
     st.session_state['request_state'] = True
 
     Glycan = Glyconformer(
-        glycan_name =       glycantype,
+        glycantype =        glycantype,
         inputfile =         None,
         fepdir =            None,
 

@@ -56,6 +56,75 @@ def _create_colvar(colvar, length, self):
 
     return colvar, length
 
+def _readfeature(path, file):
+        """
+        Function reading a list from file.
+
+        Parameters
+        ----------
+        path, file : str
+            Name of the path + file to read in,
+            including file extension 
+
+        Returns
+        -------
+        list
+            Variable holding the list of strings
+        """
+
+        feature = importlib.resources.read_text(path, file)
+        feature = feature.split()
+
+        return feature
+
+def _readdict(path, file):
+        """
+        Function loading a dictionary from file.
+
+        Parameters
+        ----------
+        path, file : str
+            Name of the path + file to read in,
+            including file extension 
+
+        Returns
+        -------
+        dict
+            Variable holding the dictionary
+        """
+    
+        with importlib.resources.open_text(path, file) as f:
+            data = f.read()
+        dict = json.loads(data)
+    
+        return dict 
+
+def _readseparator(path, file):
+        """
+        Function reading the separator information from file as lists.
+
+        Parameters
+        ----------
+        path, file : str
+            Name of the path + file to read in,
+            including file extension 
+
+        Returns
+        -------
+        index
+        sep
+            Variables holding the lists with the separator index and label
+        """
+
+        index = []
+        sep = []
+        with importlib.resources.open_text(path, file) as f:
+            reader = csv.reader(f, delimiter=' ')
+            for row in reader:
+                index.append(int(row[0]))
+                sep.append(str(row[1]))
+        return index, sep
+
 def _vertical_conformer_string(namelist):
     """
     Function that converts the conform string from a 
@@ -124,7 +193,7 @@ class Glyconformer():
     def __init__(self, inputfile=None, length=None, glycantype=None,
                  angles=None, omega_angles=None, separator_index=None, 
                  separator=None, fepdir=None, order_max=None,
-                 order_min=None, weights=None, colvar=None, fep_files=None):
+                 order_min=None, weights=None, colvar=None, fep_files=None, glycan_name=None):
         
         # Instance variables
         """
@@ -161,21 +230,39 @@ class Glyconformer():
         # whether information are read from the LIBRARY_GLYCANS or from 
         # user input variables. 
 
-        self.glycantype: str = glycantype
-        self.inputfile: str = inputfile                  # filepath
-        self.fepdir: str = fepdir                        # filepath
+        if glycantype is None:
+            self.glycan_name: str = glycan_name
+            self.inputfile: str = inputfile                  # filepath
+            self.fepdir: str = fepdir                        # filepath
 
-        self.angles: list = angles
-        self.omega_angles: list = omega_angles
-        self.separator_index: list = separator_index
-        self.separator: list = separator
-        self.fep_files: dict = fep_files
-        self.order_max: int = order_max
-        self.order_min: int = order_min
-        self.weights: int = weights
+            self.angles: list = angles
+            self.omega_angles: list = omega_angles
+            self.separator_index: list = separator_index
+            self.separator: list = separator
+            self.fep_files: dict = fep_files
+            self.order_max: int = order_max
+            self.order_min: int = order_min
+            self.weights: int = weights
 
-        self.maxima, self.minima = self._find_min_max()
-        self.colvar, self.length = _create_colvar(colvar, length, self)
+            self.maxima, self.minima = self._find_min_max()
+            self.colvar, self.length = _create_colvar(colvar, length, self)
+
+
+        else:
+            self.glycantype = glycantype
+            self.inputfile = "TUTORIAL/{}_example/{}_angles.dat".format(self.glycantype,self.glycantype)
+
+            self.angles = _readfeature("LIBRARY_GLYCANS.{}".format(self.glycantype), "angles.dat")
+            self.omega_angles = _readfeature("LIBRARY_GLYCANS.{}".format(self.glycantype), "omega_angles.dat")
+            self.separator_index, self.separator = _readseparator("LIBRARY_GLYCANS.{}".format(self.glycantype), "separator.dat")
+            self.fepdir = "LIBRARY_GLYCANS/{}".format(self.glycantype)
+            self.fep_files: dict = {}
+            self.order_max: int = 5
+            self.order_min: int = 5
+            self.minima, self.maxima = self._find_min_max()
+            self.weights = None
+            
+            self.colvar, self.length = _create_colvar(colvar, length, self)
 
 
         self.label = self._label_min()
@@ -545,20 +632,18 @@ class Glyconformer():
         return name_list, average, error
 
     def _plot_distribution(self, name_list, colors, dpi, ymax, fontsize, file, average, error):
-
-        fig, ax = plt.subplots()
-
+        
         pos_list = np.arange(len(name_list))
-        plt.rcParams['figure.dpi'] = dpi                # dpi: 300
 
+        plt.rcParams['figure.dpi'] = dpi
+        ax = plt.axes()
         ax.xaxis.set_major_locator(ticker.FixedLocator((pos_list)))
-        ax.xaxis.set_major_formatter(ticker.FixedFormatter((name_list)))    # name_list: String Abfolgen aller Balken ['G₋ G₋ G₋ A₊ 6── G₊ T ..', ..]
-        bar = plt.bar(pos_list, average.Prob * 100, yerr = error * 100)     # average: Häufigkeit der String Abfolgen in 'name_list' ['G₋ G₋ G₋ A₊ 6── G₊ T ..', ..] mit einem Wert '0.384400' multipliziert mit 100 (Balkengröße)
-                                                                            # error: ein Wert als Fehlertoleranz '0.008377' multipliziert mit 100 (schwarzer Strich)
+        ax.xaxis.set_major_formatter(ticker.FixedFormatter((name_list)))   
+        bar = plt.bar(pos_list, average.Prob * 100, yerr = error * 100)
         for i in range(len(pos_list)):
-            bar[i].set_color(colors[i])                 # colors: ['#173c4d', '#146b65', '#4e9973', ..]
-        plt.ylim(0,ymax)                                # ymax: 100 (Maße für die y-Achse)
-        plt.xticks(fontsize = fontsize)                 # fontsize: 15
+            bar[i].set_color(colors[i])
+        plt.ylim(0,ymax)
+        plt.xticks(fontsize = fontsize)
         plt.yticks(fontsize = fontsize)
         plt.xlabel("Conformer", fontsize = fontsize)
         plt.ylabel('Probability [%]', fontsize = fontsize)
@@ -566,10 +651,8 @@ class Glyconformer():
         if file is None:
             pass
         else:
-            plt.savefig(file, bbox_inches='tight')      # file: Pfad zum abspeichern der Grafik
+            plt.savefig(file, bbox_inches='tight')
         plt.show()
-
-        return fig
 
     def distribution(self,
                      threshold=2,
@@ -610,7 +693,7 @@ class Glyconformer():
             name_list, average, error = self._order_conformer(average, error, threshold) 
             var = (N/(N-1))*( (error.Error / N) - average.Prob*average.Prob ) 
             error = np.sqrt( var / N )
-            return self._plot_distribution(name_list, colors, dpi, ymax, fontsize, file, average, error)
+            self._plot_distribution(name_list, colors, dpi, ymax, fontsize, file, average, error)
        
         else:
             average, error = self._bootstrap(n_iterations)
@@ -763,9 +846,7 @@ class Glyconformer():
                        dpi = 600,
                        ymax = 100,
                        file = None):
-        
         if self.weights == None:
-
             #List top conformers
             top = []
             for r in range(0,ranks):
@@ -787,27 +868,27 @@ class Glyconformer():
                 occurrences[j]["rollcount"] = occurrences[j].rolling(window, min_periods=1).count()
                 occurrences[j].loc[:, "rollcount"] = [x / window * 100 for x in occurrences[j].loc[:, "rollcount"]]
             
-
-            # Create the plot
-            
-            fig, ax = plt.subplots(figsize=(10, 6))  # Adjust figure size as needed
-
+            #Plot
+            plt.figure()
+            plt.rcParams['figure.dpi'] = dpi
             plt.xlabel("Time [ns]", fontsize=fontsize)
             plt.ylabel("Probability [%]", fontsize=fontsize)
             plt.tick_params(axis='both', which='major', labelsize=fontsize)
+            
+            for j,l,c,line in zip(range(0,len(top)), label, color, linestyle):
+                plt.plot(occurrences[j].index * (simulation_length/self.length), occurrences[j].loc[:, "rollcount"], label = l, color = c, linestyle = line)
+            
+            plt.legend(fontsize = fontsize)
+            plt.ylim(0,ymax)
+            plt.show()
 
-            for j, l, c, line in zip(range(0, len(top)), label, color, linestyle):
-                ax.plot(occurrences[j].index * (simulation_length/self.length), occurrences[j].loc[:, "rollcount"], label=l, color=c, linestyle=line)
-
-            plt.legend(fontsize=fontsize)
-            plt.ylim(0, ymax)
-
-            # Return the figure object
-            return fig
-
+            if file is None:
+                pass
+            else:
+                plt.savefig(file, bbox_inches='tight')
+            plt.show()
         else:
             print("Moving average can not be computed for weighted data")
-            return None  # Indicate failure for weighted data
 
     def _plot_pca(self, top, label, color, components_plot, dpi, figsize, fontsize, all, all_color, all_label, marker, conformer, legend, file, biplot, biplot_fontsize,pick, datatopick, colorpick, coefficients, ticks, finalDf=None, pca_df_scaled=None, loadings_r=None):
             #Plot
@@ -900,8 +981,6 @@ class Glyconformer():
                 pass
             plt.show()
 
-            return fig
-
     def pca(self,
             components = 2,
             ranks = 3,
@@ -989,9 +1068,9 @@ class Glyconformer():
             for index in scaler.index:
                 pca_df_scaled[index] *= scaler[index]
        
-            return self._plot_pca(top, label, color, components_plot, dpi, figsize, fontsize, all, all_color, all_label, marker, conformer, legend, file, biplot, biplot_fontsize, pick, datatopick, colorpick, coefficients, ticks, pca_df_scaled=pca_df_scaled, loadings_r=loadings_r)
+            self._plot_pca(top, label, color, components_plot, dpi, figsize, fontsize, all, all_color, all_label, marker, conformer, legend, file, biplot, biplot_fontsize, pick, datatopick, colorpick, coefficients, ticks, pca_df_scaled=pca_df_scaled, loadings_r=loadings_r)
         else:
-            return self._plot_pca(top, label, color, components_plot, dpi, figsize, fontsize, all, all_color, all_label, marker, conformer, legend, file, biplot, biplot_fontsize, pick, datatopick, colorpick, coefficients, ticks, finalDf=finalDf)
+            self._plot_pca(top, label, color, components_plot, dpi, figsize, fontsize, all, all_color, all_label, marker, conformer, legend, file, biplot, biplot_fontsize, pick, datatopick, colorpick, coefficients, ticks, finalDf=finalDf)
 
     def pca_fep(self,
                 components = 2,
@@ -1033,26 +1112,32 @@ class Glyconformer():
         else:
             F = F + abs(F_min)
         
- 
+        plt.rcParams['figure.dpi'] = dpi
         plt.figure(figsize = (figsize))
-        fig = plt.figure(figsize=figsize)
-
+        
         ax = plt.gca()
-        if not ticks:
+        if ticks == False:
             ax.axes.xaxis.set_visible(False)
             ax.axes.yaxis.set_visible(False)
-
-        ax.set_xlabel('Principal Component {}'.format(components_plot[0]), fontsize=fontsize)
-        ax.set_ylabel('Principal Component {}'.format(components_plot[1]), fontsize=fontsize)
-
-        cp = plt.contourf(yedges[1:], xedges[1:], F.T, colorrange, cmap=cmap, alpha=alpha)
+        else:
+            pass
+            
+        ax.set_xlabel('Principal Component {}'.format(components_plot[0]), fontsize = fontsize)
+        ax.set_ylabel('Principal Component {}'.format(components_plot[1]), fontsize = fontsize)
+        
+        cp = plt.contourf(yedges[1:], xedges[1:], F.T, colorrange, cmap=cmap, alpha = alpha)
         
         if legend == True:
             cbar = plt.colorbar(cp)
             cbar.set_label("kJ/mol", fontsize = fontsize)
-        
-        plt.close()  # Close the figure to avoid memory issues
-        return fig
+        else:
+            pass
+            
+        if file is None:
+            pass
+        else:
+            plt.savefig(file, bbox_inches='tight')
+        plt.show()
 
 class Glycompare:
     # Class variables
