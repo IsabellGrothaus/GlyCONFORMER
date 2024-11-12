@@ -17,6 +17,8 @@
     width: 40px;
 }
 
+/* Icon */
+
 section:last-child {
     position: relative;
 }
@@ -35,6 +37,45 @@ i {
     scale: 5;
     opacity: 0.1;
 }
+
+/* Headline */
+
+section:last-child {
+    position: relative;
+}
+
+.headline-container {
+    position: relative;
+    opacity: 1;
+    top: 0px;
+    transition: opacity 1s ease-in-out, top 1s ease-in-out;
+}
+
+.visible-text {
+    opacity: 1;
+    top: 20px;
+}
+
+h1 {
+    font-size: 4.5rem;
+    text-align: center;
+    background: linear-gradient(90deg, #00dbde, #fc00ff, #00dbde);
+    animation: animate 2.5s linear infinite;
+
+    background-size: 200%;
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+@keyframes animate
+{
+    to {
+        background-position: 200%;
+    }
+}
+
+
 
 /*
 div:has(> div.stMarkdown > div > #progress_start) + div { 

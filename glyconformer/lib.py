@@ -709,6 +709,7 @@ class Glyconformer():
                            dpi = 300,
                            ymax = 100,
                            file=None):
+        
         if self.weights == None:
             #List top conformers
             top = []
@@ -730,27 +731,32 @@ class Glyconformer():
                         
                 occurrences[j][:] = [x * 100 for x in occurrences[j]]
                 indices[j][:] = [x * (simulation_length/self.length) for x in indices[j]]
-            #Plot
-            plt.figure()
-            plt.rcParams['figure.dpi'] = dpi
-            plt.xlabel("Time [ns]", fontsize=fontsize)
-            plt.ylabel("Probability [%]", fontsize=fontsize)
-            plt.tick_params(axis='both', which='major', labelsize=fontsize)
             
-            for j,l,c,line in zip(range(0,len(top)), label, color, linestyle):
-                plt.plot(indices[j], occurrences[j], label = l, color = c, linestyle = line)
-            
-            plt.legend(fontsize = fontsize)
-            plt.ylim(0,ymax)
-            plt.plot()
 
-            if file is None:
-                pass
-            else:
-                plt.savefig(file, bbox_inches='tight')
-            plt.show()
-        else:
-            print("Cumulative average can not be computed for weighted data")
+
+             # Create the plot
+            figure, ax = plt.subplots(figsize=(10, 6))  # Adjust figure size as needed
+
+            plt.rcParams['figure.dpi'] = dpi
+            ax.set_xlabel("Time [ns]", fontsize=fontsize)
+            ax.set_ylabel("Probability [%]", fontsize=fontsize)
+            ax.tick_params(axis='both', which='major', labelsize=fontsize)
+
+            # Set default labels, colors, and linestyles if not provided
+            if label is None:
+                label = [f"Rank {r+1}" for r in range(ranks)]
+            if color is None:
+                color = plt.cm.tab10(range(ranks))  # Use colormap for default colors
+            if linestyle is None:
+                linestyle = ['-', '--', ':', '-.'] * (ranks // len(linestyle) + 1)[:ranks]  # Repeat linestyles if needed
+
+            for j, l, c, line in zip(range(ranks), label, color, linestyle):
+                ax.plot(indices[j], occurrences[j], label=l, color=c, linestyle=line)
+
+            ax.legend(fontsize=fontsize)
+            ax.set_ylim(0, ymax)
+
+            return figure
 
     def moving_average(self,
                        simulation_length,

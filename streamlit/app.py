@@ -74,11 +74,20 @@ def buildHUD():
                 st.pyplot(Glycan.pca(biplot = True))
                 st.write(Glycan.distribution())
                 st.pyplot(Glycan.pca_fep())
+                st.pyplot(Glycan.moving_average(simulation_length = 500, window = 12500))
                 st.pyplot(Glycan.cumulative_average(simulation_length = 500))
 
     else:
+        ''' '''
         with container:
-            st.markdown("<i class='fa-solid fa-solid fa-flask-vial'></i>", unsafe_allow_html=True)
+            st.markdown("""
+                <div class='headline-container'>
+                    <h1>GlyCONFORMER</h1>
+                </div>
+            """, unsafe_allow_html=True)
+           
+        # with container:
+        #     st.markdown("<i class='fa-solid fa-solid fa-flask-vial'></i>", unsafe_allow_html=True)
 
 
 # -------- local FUNCTIONS--------- #
@@ -441,51 +450,8 @@ with st.sidebar:
 
 # -------- ### --------- #
 
+with open('script.js') as f:
+    st.markdown(f"<script>{f.read()}</script>", unsafe_allow_html=True)
 
 with open('styles.css') as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
-
-'''
-st.write("""
-    <style>
-        .stTabs > div > div > div > button {
-            width: 50%;
-        }
-    </style>
-""", unsafe_allow_html=True)
-'''
-
-'''
-if "attendance" not in st.session_state:
-    st.session_state.attendance = set()
-
-def take_attendance():
-    if st.session_state.name in st.session_state.attendance:
-        st.info(f"{st.session_state.name} has already been counted.")
-    else:
-        st.session_state.attendance.add(st.session_state.name)
-
-
-with st.form(key="my_form"):
-    st.text_input("Name", key="name")
-    st.form_submit_button("I'm here!", on_click=take_attendance)
-
-    -------
-
-    file_content = pd.read_csv(
-                    dataframe_file, 
-                    sep='\s+',              # \s+' -> mit Whitespace gertrennt. + -> (ein oder mehrmals)
-                    header=None, 
-                    names=['col1', 'col2'], 
-                    dtype={'col1': int, 'col2': str}
-    )
-
-    st.write(file_content)
-    st.write(file_content['col1'].to_numpy(), file_content['col2'].to_numpy())
-
-    -------
-
-    for key, value in st.session_state['fep'].items():
-        st.write(key)
-        st.write(value)
-'''
