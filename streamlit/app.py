@@ -84,7 +84,31 @@ def buildHUD():
                 <div class='headline-container'>
                     <h1>GlyCONFORMER</h1>
                 </div>
+                
             """, unsafe_allow_html=True)
+
+            with container:
+                col1, col2, col3 = st.columns(3)
+
+                with col1:
+                    st.header("Headline 1")
+                    st.image("https://static.streamlit.io/examples/owl.jpg")
+
+
+                with col2:
+                    left = st.checkbox("Left")
+                    right = st.checkbox("Right")
+
+                    if left:
+                        ''' '''
+
+                    if right:
+                        ''' '''
+
+                with col3:
+                    st.header("Headline 2")
+                    st.image("https://static.streamlit.io/examples/owl.jpg")
+                    
            
         # with container:
         #     st.markdown("<i class='fa-solid fa-solid fa-flask-vial'></i>", unsafe_allow_html=True)

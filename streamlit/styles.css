@@ -75,7 +75,96 @@ h1 {
     }
 }
 
+.element-container:has(div > div > div.headline-container) + div {
+    position: relative;
+    /* overflow: hidden; */
+    height: 500px;
+    transition: 1s ease;
+}
 
+.element-container:has(div > div > div.headline-container) + div > div{
+    width: 100%;
+    position: absolute;
+}
+
+
+.element-container:has(div > div > div.headline-container) + div > div:first-child {
+    transform: translateX(-100%);
+}
+
+.element-container:has(div > div > div.headline-container) + div > div:nth-child(2){
+    z-index: 10;
+}
+
+.element-container:has(div > div > div.headline-container) + div > div:last-child {
+    transform: translateX(100%);
+}
+
+/*
+.element-container:has(div > div > div.headline-container) + div > div:nth-child(2) > div > div > div {
+    display: flex;
+    flex-direction: row;
+}
+
+
+.element-container:has(div > div > div.headline-container) + div > div:nth-child(2) > div > div > div > div {
+    position: relative;
+}
+
+.element-container:has(div > div > div.headline-container) + div > div:nth-child(2) > div > div > div > div > .stCheckbox {
+    width: unset;
+}
+*/
+
+.element-container:has(div > div > div.headline-container) + div:has(div:nth-child(2) > div > div > div > .element-container:nth-child(1) > .stCheckbox > label > input:checked) > div:first-child {
+    transform: translateX(0%);
+}
+
+.element-container:has(div > div > div.headline-container) + div:has(div:nth-child(2) > div > div > div > .element-container:nth-child(2) > .stCheckbox > label > input:checked) > div:last-child {
+    transform: translateX(0%);
+}
+
+
+
+/* Content 
+
+.slide-container {
+    position: relative;
+    overflow: hidden;
+    height: 500px;
+}
+
+.slider {
+    display: flex;
+    transition: 1s ease;
+}
+
+.explanation {
+    width: 100%;
+    position: absolute;
+    transform: translateX(-100%);
+}
+
+.intro {
+    width: 100%;
+    position: absolute;
+}
+
+.credits {
+    width: 100%;
+    position: absolute;
+    transform: translateX(100%);
+}
+
+#btnControl {
+    display: none;
+}
+
+.slider:has(#btnControl:checked + label) {
+    transform: translateX(40%);
+}
+
+*/
 
 /*
 div:has(> div.stMarkdown > div > #progress_start) + div { 
