@@ -75,10 +75,15 @@ h1 {
     }
 }
 
+/* Content */
+
+div:has(div > div > div.element-container > div.stMarkdown > div > div.headline-container) {
+    overflow: hidden;
+}
+
 .element-container:has(div > div > div.headline-container) + div {
     position: relative;
-    /* overflow: hidden; */
-    height: 500px;
+    height: 550px;
     transition: 1s ease;
 }
 
@@ -92,13 +97,11 @@ h1 {
     transform: translateX(-100%);
 }
 
-.element-container:has(div > div > div.headline-container) + div > div:nth-child(2){
-    z-index: 10;
-}
-
 .element-container:has(div > div > div.headline-container) + div > div:last-child {
     transform: translateX(100%);
 }
+
+
 
 /*
 .element-container:has(div > div > div.headline-container) + div > div:nth-child(2) > div > div > div {
@@ -123,6 +126,8 @@ h1 {
 .element-container:has(div > div > div.headline-container) + div:has(div:nth-child(2) > div > div > div > .element-container:nth-child(2) > .stCheckbox > label > input:checked) > div:last-child {
     transform: translateX(0%);
 }
+
+
 
 
 

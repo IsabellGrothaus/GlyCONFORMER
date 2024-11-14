@@ -21,7 +21,6 @@ st.markdown("""
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
 """, unsafe_allow_html=True)
 
-
 def setSessionStates():
 
     if 'glycan' not in st.session_state:
@@ -91,25 +90,29 @@ def buildHUD():
                 col1, col2, col3 = st.columns(3)
 
                 with col1:
-                    st.header("Headline 1")
-                    st.image("https://static.streamlit.io/examples/owl.jpg")
-
+                    st.button("back >", use_container_width=True, key="button1")
+                    st.subheader("Instruction")
 
                 with col2:
-                    left = st.checkbox("Left")
-                    right = st.checkbox("Right")
+                    left, right= st.columns(2)
 
-                    if left:
-                        ''' '''
+                    with left:
+                        st.button("left middle", use_container_width=True, key="button2")
 
-                    if right:
-                        ''' '''
+                    with right:
+                        st.button("right middle", use_container_width=True, key="button3")
 
                 with col3:
-                    st.header("Headline 2")
-                    st.image("https://static.streamlit.io/examples/owl.jpg")
-                    
-           
+                    st.button("< back", use_container_width=True, key="button4")
+
+
+                st.write(change_slide(), unsafe_allow_html=True)
+
+                if st.session_state['button2']:
+                    with col1:
+                        st.write_stream(stream_data())
+
+            st.header("Headline")
         # with container:
         #     st.markdown("<i class='fa-solid fa-solid fa-flask-vial'></i>", unsafe_allow_html=True)
 
@@ -233,6 +236,50 @@ def createProgressBar(percentage: str):
             </div>
         </div>
         """
+
+def change_slide():
+
+    value = 0
+
+    if st.session_state['button2']:
+        value = 100
+    elif st.session_state['button3']:
+        value = -100
+
+    return f"""
+        <style>
+            .element-container:has(div > div > div.headline-container) + div {{
+                transform: translateX({value}%);
+            }}
+        </style>
+    """
+
+def stream_data():
+
+    text = """
+        You have the option of choosing between a locally initialised glycan or using your own glycan data.
+        The latter requires corresponding data in a predefined sequence, as described in the following steps.
+        \nStep 1:
+        Upload your dataframe with the raw data of the torsion angles.
+        The order of the torsion angles is essential for later analyses.
+        Further processing can only take place once the corresponding stage has been completed.
+        \nStep 2:
+        The required upload is determined based on the identified angles in the data frame.
+        Incorrect or double uploaded angles are invalid and generate an error and must be removed manually.
+        \nStep 3:
+        Upload your file with the separators. The file must contain the indexed position and the character of the separator and be structured as follows, for example.
+        \n4 "6──"
+        \n8 "6──"
+        \n12 "3──"
+        \n15 "3──"
+        \nStep 4:
+        Determine additional properties. These are set by default and are optional for initialising the data.
+        """
+    
+    for word in text.split(" "):
+        yield word + " "
+        time.sleep(0.05)
+
 
 def determineLength(value: int):
 
