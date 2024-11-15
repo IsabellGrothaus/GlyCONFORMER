@@ -9,7 +9,7 @@ classifiers = [
     ]
 
 setup(name='GlyCONFORMER',
-      version='1.0.1',
+      version='1.1.2',
       description="GlyCONFORMERS is a Python package that assigns conformer strings to N-glycan conformers, based on their torsion angle values.",
       url="https://github.com/IsabellGrothaus/GlyCONFORMER",
       long_description = (here / "README.md").read_text(),
@@ -22,6 +22,6 @@ setup(name='GlyCONFORMER',
       packages=find_packages(),
       package_data={'':['**/*.dat']},
       install_requires=[
-                       "numpy==1.26.4","matplotlib","pandas<=1.3.5","plumed","scipy"
+                       "numpy==1.26.4","matplotlib","pandas<=1.3.5","plumed","scipy","wpca","scikit-learn"
                        ],
       )

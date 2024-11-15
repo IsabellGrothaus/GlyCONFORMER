@@ -924,12 +924,12 @@ class Glyconformer():
             coefficients = 3,
             file = None):
         
-        colvar_pca = pd.DataFrame({"index": self.colvar.index})
+        colvar_pca = pd.DataFrame({"index": self.colvar.index}).set_index("index")
         for a in self.angles:
             colvar_pca.loc[:,"sin_{}".format(a)] = np.sin(self.colvar.loc[:,a])
             colvar_pca.loc[:,"cos_{}".format(a)] = np.cos(self.colvar.loc[:,a])
-        colvar_pca = colvar_pca.drop(columns = ["index"])
-        
+        colvar_pca.reset_index(drop=True, inplace=True)
+
         #List top conformers
         top = []
         for r in range(0,ranks):
@@ -1010,7 +1010,7 @@ class Glyconformer():
             colvar_pca.loc[:,"sin_{}".format(a)] = np.sin(self.colvar.loc[:,a])
             colvar_pca.loc[:,"cos_{}".format(a)] = np.cos(self.colvar.loc[:,a])
         colvar_pca = colvar_pca.drop(columns = ["index"])
-
+        
         pca = PCA(n_components=components)
         # Compute PCA and transform into dataframe with target addition
         principalComponents = pca.fit_transform(colvar_pca)
