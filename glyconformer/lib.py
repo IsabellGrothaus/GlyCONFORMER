@@ -573,20 +573,40 @@ class Glyconformer():
 
     def _plot_distribution(self, name_list, colors, dpi, ymax, fontsize, file, average, error):
         
-        pos_list = np.arange(len(name_list))
+        if len(name_list) <= 8:
+            pos_list = np.arange(len(name_list))
+            plt.rcParams['figure.dpi'] = dpi
+            plt.figure()
+            ax = plt.axes()
+            ax.xaxis.set_major_locator(ticker.FixedLocator((pos_list)))
+            ax.xaxis.set_major_formatter(ticker.FixedFormatter((name_list)))   
+            bar = plt.bar(pos_list, average.Prob * 100, yerr = error * 100)
+            for i in range(len(pos_list)):
+                bar[i].set_color(colors[i])
+            plt.ylim(0,ymax)
+            plt.xticks(fontsize = fontsize)
+            plt.yticks(fontsize = fontsize)
+            plt.xlabel("Conformer", fontsize = fontsize)
+            plt.ylabel('Probability [%]', fontsize = fontsize)
 
-        plt.rcParams['figure.dpi'] = dpi
-        ax = plt.axes()
-        ax.xaxis.set_major_locator(ticker.FixedLocator((pos_list)))
-        ax.xaxis.set_major_formatter(ticker.FixedFormatter((name_list)))   
-        bar = plt.bar(pos_list, average.Prob * 100, yerr = error * 100)
-        for i in range(len(pos_list)):
-            bar[i].set_color(colors[i])
-        plt.ylim(0,ymax)
-        plt.xticks(fontsize = fontsize)
-        plt.yticks(fontsize = fontsize)
-        plt.xlabel("Conformer", fontsize = fontsize)
-        plt.ylabel('Probability [%]', fontsize = fontsize)
+        else:
+            name_list = name_list[:8]
+            average = average.head(8)  # Keep the first 8 rows
+            error = error.head(8)
+            pos_list = np.arange(len(name_list))
+            plt.rcParams['figure.dpi'] = dpi
+            plt.figure()
+            ax = plt.axes()
+            ax.xaxis.set_major_locator(ticker.FixedLocator((pos_list)))
+            ax.xaxis.set_major_formatter(ticker.FixedFormatter((name_list)))   
+            bar = plt.bar(pos_list, average.Prob * 100, yerr = error * 100)
+            for i in range(len(pos_list)):
+                bar[i].set_color(colors[i])
+            plt.ylim(0,ymax)
+            plt.xticks(fontsize = fontsize)
+            plt.yticks(fontsize = fontsize)
+            plt.xlabel("Conformer", fontsize = fontsize)
+            plt.ylabel('Probability [%]', fontsize = fontsize)
         
         if file is None:
             pass
@@ -1005,17 +1025,18 @@ class Glyconformer():
                 alpha = 0.8,
                 file = None):
 
-        colvar_pca = pd.DataFrame({"index": self.colvar.index})
+        colvar_pca = pd.DataFrame({"index": self.colvar.index}).set_index("index")
         for a in self.angles:
             colvar_pca.loc[:,"sin_{}".format(a)] = np.sin(self.colvar.loc[:,a])
             colvar_pca.loc[:,"cos_{}".format(a)] = np.cos(self.colvar.loc[:,a])
-        colvar_pca = colvar_pca.drop(columns = ["index"])
+        colvar_pca.reset_index(drop=True, inplace=True)
         
         pca = PCA(n_components=components)
         # Compute PCA and transform into dataframe with target addition
         principalComponents = pca.fit_transform(colvar_pca)
         principalDf = pd.DataFrame(data = principalComponents)
-        finalDf = pd.concat([principalDf, self.binary_compressed[['Conformer']]], axis = 1)
+        binary_compressed = self.binary_compressed.reset_index(drop=True)
+        finalDf = pd.concat([principalDf, binary_compressed[['Conformer']]], axis = 1)
         
         H, xedges, yedges = np.histogram2d(finalDf.iloc[:,components_plot[0]-1], finalDf.iloc[:,components_plot[1]-1], bins=bins)
 
