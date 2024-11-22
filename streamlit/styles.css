@@ -17,7 +17,7 @@
     width: 40px;
 }
 
-/* Icon */
+/* Icon
 
 section:last-child {
     position: relative;
@@ -38,6 +38,8 @@ i {
     opacity: 0.1;
 }
 
+*/
+
 /* Headline */
 
 section:last-child {
@@ -46,18 +48,14 @@ section:last-child {
 
 .headline-container {
     position: relative;
-    opacity: 1;
-    top: 0px;
     transition: opacity 1s ease-in-out, top 1s ease-in-out;
-}
-
-.visible-text {
-    opacity: 1;
-    top: 20px;
+    min-height: 100px;
+    align-content: center;
 }
 
 h1 {
-    font-size: 4.5rem;
+    font-size: 3.8vw;
+    white-space: nowrap;
     text-align: center;
     background: linear-gradient(90deg, #00dbde, #fc00ff, #00dbde);
     animation: animate 2.5s linear infinite;
@@ -75,6 +73,43 @@ h1 {
     }
 }
 
+[data-testid='stHeaderActionElements'], [data-testid='StyledFullScreenButton'] {
+    display: none;
+  }
+
+
+/* Button */
+
+
+[data-testid='stBaseButton-secondary']{
+    width: 165px;
+    /* background-color: unset;
+    border: unset;  */
+}
+
+/*
+[data-testid='stBaseButton-secondary']:active {
+    color: unset;
+    border-color: unset;
+    background-color: unset;
+  }
+*/
+
+.element-container:has(div > div > div.headline-container) + div > div:first-child button {
+    float: right;
+}
+
+.element-container:has(div > div > div.headline-container) + div > div:nth-child(2) > div > div > div > div > div:first-child button{
+    float: right;
+}
+
+.element-container:has(div > div > div.headline-container) + div > div:nth-child(2) > div > div > div > div > div:last-child button{
+    float: left;
+}
+
+
+
+
 /* Content */
 
 div:has(div > div > div.element-container > div.stMarkdown > div > div.headline-container) {
@@ -83,15 +118,17 @@ div:has(div > div > div.element-container > div.stMarkdown > div > div.headline-
 
 .element-container:has(div > div > div.headline-container) + div {
     position: relative;
-    height: 550px;
+    height: 600px;
     transition: 1s ease;
 }
 
-.element-container:has(div > div > div.headline-container) + div > div{
-    width: 100%;
+.element-container:has(div > div > div.headline-container) + div > div {
     position: absolute;
+    width: 100%;
+    height: 100%;
+    overflow: scroll; 
+    overflow-x: hidden;                         /* verhinert das Auftauchen des horizontalen Scrollbalkens*/
 }
-
 
 .element-container:has(div > div > div.headline-container) + div > div:first-child {
     transform: translateX(-100%);
@@ -100,7 +137,6 @@ div:has(div > div > div.element-container > div.stMarkdown > div > div.headline-
 .element-container:has(div > div > div.headline-container) + div > div:last-child {
     transform: translateX(100%);
 }
-
 
 
 /*
@@ -130,6 +166,40 @@ div:has(div > div > div.element-container > div.stMarkdown > div > div.headline-
 
 
 
+/* Footer */
+
+.element-container:has(div > div > div.headline-container) + div + div > div > div > div {
+    gap: 2rem;
+}
+
+.element-container:has(div > div > div.headline-container) + div + div > div > div > div > div {
+    align-content: center;
+
+    width: calc(25% - 1rem);
+    flex: 1 1 calc(25% - 1rem);
+}
+
+.element-container:has(div > div > div.headline-container) + div + div > div > div > div > div:first-child {
+    margin-top: 14px;
+    width: calc(13% - 1rem);
+    flex: 1 1 calc(13% - 1rem);
+}
+
+.element-container:has(div > div > div.headline-container) + div + div > div > div > div > div:last-child {
+    margin-top: -15px;
+    width: calc(15% - 1rem);
+    flex: 1 1 calc(15% - 1rem);
+}
+
+@media (max-width: 640px) {
+    .element-container:has(div > div > div.headline-container) + div {
+        height: 450px;
+    }
+
+    .element-container:has(div > div > div.headline-container) + div + div > div > div > div > div {
+        min-width: calc(50% - 1.5rem);
+    }
+}
 
 /* Content 
 

@@ -13,6 +13,26 @@ from st_aggrid import AgGrid # type: ignore
 sys.path.append("/home/eberl/bachelor_project/GlyCONFORMER/glyconformer/")
 from lib import Glyconformer
 
+def getLayout():
+
+    if 'layout' not in st.query_params:
+        st.query_params["layout"] = "centered"
+
+    return st.query_params["layout"]
+
+st.set_page_config(
+    page_title="Ex-stream-ly Cool App",
+    page_icon="🧊",
+    layout = getLayout(),
+    initial_sidebar_state="expanded",
+    menu_items={
+        'Get Help': 'https://www.extremelycoolapp.com/help',
+        'Report a bug': "https://www.extremelycoolapp.com/bug",
+        'About': "# This is a header. This is an *extremely* cool app!"
+    }
+)
+
+
 # -------- INITIALIZATION --------- #
 
 
@@ -45,6 +65,7 @@ def setSessionStates():
     if 'length' not in st.session_state:
         st.session_state['length'] = None
 
+
 setSessionStates()
 
 
@@ -56,6 +77,7 @@ def buildHUD():
     if st.session_state['request_state']:
 
         Glycan = st.session_state['glycan']
+
         
         with container:
             st.header(f"Data for: {Glycan.glycantype}")
@@ -70,14 +92,14 @@ def buildHUD():
                     
                 st.pyplot(Glycan.robust_validate_fep())
             with tab2:
-                st.pyplot(Glycan.pca(biplot = True))
-                st.write(Glycan.distribution())
-                st.pyplot(Glycan.pca_fep())
+                st.pyplot(Glycan.pca())
+                st.write(Glycan.distribution(threshold=5))
+                # st.pyplot(Glycan.pca_fep())
                 st.pyplot(Glycan.moving_average(simulation_length = 500, window = 12500))
                 st.pyplot(Glycan.cumulative_average(simulation_length = 500))
 
     else:
-        ''' '''
+        
         with container:
             st.markdown("""
                 <div class='headline-container'>
@@ -86,33 +108,92 @@ def buildHUD():
                 
             """, unsafe_allow_html=True)
 
-            with container:
-                col1, col2, col3 = st.columns(3)
+            main_col1, main_col2, main_col3 = st.columns(3)
+
+            with st.container():
+                col1, col2, col3, col4 = st.columns(4)
 
                 with col1:
-                    st.button("back >", use_container_width=True, key="button1")
-                    st.subheader("Instruction")
-
+                    st.image("images/logo_university_bremen.png", caption=None, use_column_width=True)
                 with col2:
-                    left, right= st.columns(2)
-
-                    with left:
-                        st.button("left middle", use_container_width=True, key="button2")
-
-                    with right:
-                        st.button("right middle", use_container_width=True, key="button3")
-
+                    st.image("images/logo_max_planck_biophysics.png", caption=None, use_column_width=True)
                 with col3:
-                    st.button("< back", use_container_width=True, key="button4")
+                    st.image("images/logo_max_planck_computing.png", caption=None, use_column_width=True)
+                with col4:
+                    st.image("images/logo_university_krakow.png", caption=None, use_column_width=True)
+
+            if 'previous_text' not in st.session_state:
+                st.session_state['previous_text'] = {}
+                st.session_state['previous_text']["0"] = ""
+                st.session_state['previous_text']["1"] = ""
+            if 'index' not in st.session_state:
+                st.session_state['index'] = {}
+                st.session_state['index']["0"] = 0
+                st.session_state['index']["1"] = 0
+
+            text1: str = """
+                You have the option of choosing between a locally initialised glycan or using your own glycan data.
+                The latter requires corresponding data in a predefined sequence, as described in the following steps.
+                \nStep 1:
+                Upload your dataframe with the raw data of the torsion angles.
+                The order of the torsion angles is essential for later analyses.
+                Further processing can only take place once the corresponding stage has been completed.
+                \nStep 2:
+                The required upload is determined based on the identified angles in the data frame.
+                Incorrect or double uploaded angles are invalid and generate an error and must be removed manually.
+                \nStep 3:
+                Upload your file with the separators. The file must contain the indexed position and the character of the separator and be structured as follows, for example.
+                \nStep 4:
+                Determine additional properties. These are set by default and are optional for initialising the data.
+                """
+
+            url = "https://github.com/IsabellGrothaus/GlyCONFORMER"
+            text2: str = f"""
+                        The GlyCONFORMER utility was initially designed as a nomenclature to label glycan conformers distinctively, providing an open-access community resource based on JupyterNotebooks.
+                        \nDevelopment of this Web application and graphical user interface is maintained by Isabell L. Grothaus, Theo Eberl, Klaus Reuter and Matt Sikora. 
+                        \nThe GlyCONFORMER WebApp source code as well as JupyterNotebooks to use GlyCONFORMER remotely are available on GitHub {url}
+                        \nPlease support us by citing our paper:
+                        Grothaus et al. DOI: 10.1021/acs.jcim.2c01049
+                    """
+
+            if 'container_position' not in st.session_state:
+                st.session_state['container_position'] = 0
+
+            with main_col2:
+                left, right= st.columns(2)
+
+                with left:
+                    if st.button("< how it works", use_container_width=True, key="button2"):
+                        st.session_state['container_position'] = 100
+
+                with right:
+                    if st.button("behind the project >", use_container_width=True, key="button3"):
+                        st.session_state['container_position'] = -100
+                    
+
+            with main_col1:
+                if st.button("back >", use_container_width=True, key="button1"):
+                    st.session_state['container_position'] = 0
+                st.subheader("Instruction")
+
+            with main_col3:
+                if st.button("< back", use_container_width=True, key="button4"):
+                    st.session_state['container_position'] = 0
+                st.subheader("Background")
 
 
-                st.write(change_slide(), unsafe_allow_html=True)
 
-                if st.session_state['button2']:
-                    with col1:
-                        st.write_stream(stream_data())
 
-            st.header("Headline")
+            change_slide()
+
+            with main_col1:
+                if st.session_state['button2'] or len(st.session_state['previous_text']["0"]) != 0:
+                    st.write_stream(stream_data(text1, "0"))
+
+            with main_col3:
+                if st.session_state['button3'] or len(st.session_state['previous_text']["1"]) != 0:
+                    st.write_stream(stream_data(text2, "1"))
+
         # with container:
         #     st.markdown("<i class='fa-solid fa-solid fa-flask-vial'></i>", unsafe_allow_html=True)
 
@@ -174,7 +255,6 @@ def initialize_local_Glycan(glycantype: str):
         weights =           None,
 
         colvar =            None,
-        length =            None
     )
 
     return Glycan
@@ -239,47 +319,26 @@ def createProgressBar(percentage: str):
 
 def change_slide():
 
-    value = 0
-
-    if st.session_state['button2']:
-        value = 100
-    elif st.session_state['button3']:
-        value = -100
-
-    return f"""
+    st.write(
+        f"""
         <style>
             .element-container:has(div > div > div.headline-container) + div {{
-                transform: translateX({value}%);
+                transform: translateX({st.session_state['container_position']}%);
             }}
         </style>
-    """
-
-def stream_data():
-
-    text = """
-        You have the option of choosing between a locally initialised glycan or using your own glycan data.
-        The latter requires corresponding data in a predefined sequence, as described in the following steps.
-        \nStep 1:
-        Upload your dataframe with the raw data of the torsion angles.
-        The order of the torsion angles is essential for later analyses.
-        Further processing can only take place once the corresponding stage has been completed.
-        \nStep 2:
-        The required upload is determined based on the identified angles in the data frame.
-        Incorrect or double uploaded angles are invalid and generate an error and must be removed manually.
-        \nStep 3:
-        Upload your file with the separators. The file must contain the indexed position and the character of the separator and be structured as follows, for example.
-        \n4 "6──"
-        \n8 "6──"
-        \n12 "3──"
-        \n15 "3──"
-        \nStep 4:
-        Determine additional properties. These are set by default and are optional for initialising the data.
         """
-    
-    for word in text.split(" "):
-        yield word + " "
-        time.sleep(0.05)
+    , unsafe_allow_html=True)
 
+def stream_data(text: str, id: str):
+        
+    yield st.session_state['previous_text'][id]
+
+    for i in range(st.session_state['index'][id], len(text)):
+        yield text[i]
+        st.session_state['index'][id] += 1
+        st.session_state['previous_text'][id] = st.session_state['previous_text'][id] + text[i]
+        time.sleep(0.004)
+    
 
 def determineLength(value: int):
 
