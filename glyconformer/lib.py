@@ -1076,13 +1076,13 @@ class Glyconformer():
         if file is None:
             pass
         else:
-            plt.savefig(file, bbox_inches='tight')
+            plt.savefig(file, bbox_inches='tight', transparent=True)
         plt.show()
 
 class Glycompare:
     # Class variables
     ## maybe add directory names ?
-    def __init__(self, inputfile, inputdir, common_angles, common_branches, common_angles_separators, count, binary_compressed, outputdir = "./", n_blocks = 10, weights = None): # check later which parameters are really necessary?!
+    def __init__(self, inputfile, inputdir, common_angles, common_branches, common_angles_separators, count, binary_compressed, outputdir = "./", length = None,n_blocks = 10, weights = None): # check later which parameters are really necessary?!
     
         # Instance variables
         """
@@ -1113,6 +1113,7 @@ class Glycompare:
         self.count = count
         self.binary_compressed = binary_compressed
         self.weights = weights
+        self.length = length
 
     def _join_data(self): #limited to 4 datasets, but comparing more does anyway makes not much sense
         """
@@ -1245,7 +1246,6 @@ class Glycompare:
         plt.show()
     
     def pca(self, #do we want to return data that is useful for PCA analysis? Also in Glyconformer PCA
-            length = None,
             components = 2,
             ranks = 3,
             all = True,
@@ -1258,6 +1258,7 @@ class Glycompare:
             color_basic = ["gray","gray","gray","gray"],
             marker = [".","x","v","o"],
             fontsize = 7,
+            axislim = False,
             dpi = 600,
             figsize = [5,5],
             ticks = True,
@@ -1278,20 +1279,19 @@ class Glycompare:
         weights_pca = [[] for _ in range (len(self.inputdir))]
         
         for i,f in enumerate(self.inputfile):
-            
-            if length is None:
+            if self.length is None:
                 colvars[i] = _readinputfile(f,self.common_angles)
                 lengths[i] = len(colvars[i]) 
             else:
-                lengths[i] = length 
+                lengths[i] = self.length
                 colvars[i] = _readinputfile(f,self.common_angles)
                 colvars[i] = colvars[i].iloc[::round(colvars[i].shape[0]/lengths[i]), :]
-            
-            colvars_pca[i] = pd.DataFrame({"index": colvars[i].index})
+
+            colvars_pca[i] = pd.DataFrame({"index": colvars[i].index}).set_index("index")
             for a in self.common_angles:
                 colvars_pca[i].loc[:,"sin_{}".format(a)] = np.sin(colvars[i].loc[:,a])
                 colvars_pca[i].loc[:,"cos_{}".format(a)] = np.cos(colvars[i].loc[:,a])
-            colvars_pca[i] = colvars_pca[i].drop(columns = ["index"])
+            colvars_pca[i].reset_index(drop=True, inplace=True)
 
         if len(self.inputdir) == 2:
             colvar_pca = pd.concat([colvars_pca[0], colvars_pca[1]], axis=0)
@@ -1364,6 +1364,12 @@ class Glycompare:
             ax = fig.add_subplot(1,1,1)
             ax.set_xlabel('Principal Component {}'.format(components_plot[0]), fontsize = fontsize)
             ax.set_ylabel('Principal Component {}'.format(components_plot[1]), fontsize = fontsize)
+
+            if axislim == False:
+                pass
+            else:
+                ax.set_xlim(axislim[0], axislim[1])
+                ax.set_ylim(axislim[2], axislim[3])
 
             if ticks == False:
                 ax.get_xaxis().set_ticks([])
@@ -1440,6 +1446,13 @@ class Glycompare:
             ax = fig.add_subplot(1,1,1)
             ax.set_xlabel('Principal Component {}'.format(components_plot[0]), fontsize = fontsize)
             ax.set_ylabel('Principal Component {}'.format(components_plot[1]), fontsize = fontsize)
+
+            if axislim == False:
+                pass
+            else:
+                ax.set_xlim(axislim[0], axislim[1])
+                ax.set_ylim(axislim[2], axislim[3])
+
             if ticks == False:
                 ax.get_xaxis().set_ticks([])
                 ax.get_yaxis().set_ticks([])
@@ -1485,7 +1498,7 @@ class Glycompare:
         if file is None:
             pass
         else:
-            plt.savefig(file, bbox_inches='tight')
+            plt.savefig(file, bbox_inches='tight', transparent=True)
         plt.show()
 
     def pca_fep(self,
@@ -1617,5 +1630,5 @@ class Glycompare:
             if file is None:
                 pass
             else:
-                plt.savefig(file, bbox_inches='tight')
+                plt.savefig(file[d], bbox_inches='tight', transparent=True)
             plt.show()
