@@ -545,24 +545,81 @@ class Glyconformer():
         return name_list, average, error
 
     def _plot_distribution(self, name_list, colors, dpi, ymax, fontsize, file, average, error):
-
+        
         fig, ax = plt.subplots(figsize=(6, 4))
 
-        pos_list = np.arange(len(name_list))
-        plt.rcParams['figure.dpi'] = dpi                # dpi: 300
+        if len(name_list) <= 8:
+            pos_list = np.arange(len(name_list))
+            plt.rcParams['figure.dpi'] = dpi 
 
-        ax.xaxis.set_major_locator(ticker.FixedLocator((pos_list)))
-        ax.xaxis.set_major_formatter(ticker.FixedFormatter((name_list)))    # name_list: String Abfolgen aller Balken ['G₋ G₋ G₋ A₊ 6── G₊ T ..', ..]
-        bar = plt.bar(pos_list, average.Prob * 100, yerr = error * 100)     # average: Häufigkeit der String Abfolgen in 'name_list' ['G₋ G₋ G₋ A₊ 6── G₊ T ..', ..] mit einem Wert '0.384400' multipliziert mit 100 (Balkengröße)
-                                                                            # error: ein Wert als Fehlertoleranz '0.008377' multipliziert mit 100 (schwarzer Strich)
-        for i in range(len(pos_list)):
-            bar[i].set_color(colors[i])                 # colors: ['#173c4d', '#146b65', '#4e9973', ..]
-        plt.ylim(0,ymax)                                # ymax: 100 (Maße für die y-Achse)
-        plt.xticks(fontsize = fontsize)                 # fontsize: 15
-        plt.yticks(fontsize = fontsize)
-        plt.xlabel("Conformer", fontsize = fontsize)
-        plt.ylabel('Probability [%]', fontsize = fontsize)
-        
+            ax.xaxis.set_major_locator(ticker.FixedLocator((pos_list)))
+            ax.xaxis.set_major_formatter(ticker.FixedFormatter((name_list)))        # name_list: String Abfolgen aller Balken ['G₋ G₋ G₋ A₊ 6── G₊ T ..', ..]
+
+            plt.bar(pos_list, average.Prob * 100, yerr=error * 100, color=colors)   # average: Häufigkeit der String Abfolgen in 'name_list' ['G₋ G₋ G₋ A₊ 6── G₊ T ..', ..] mit einem Wert '0.384400' multipliziert
+                                                                                    # error: ein Wert als Fehlertoleranz '0.008377' multipliziert mit 100 (schwarzer Strich)
+                                                                                    # colors: ['#173c4d', '#146b65', '#4e9973', ..]
+                                                                                    
+            plt.ylim(0, ymax)                                                       # ymax: 100 (Maße für die y-Achse)
+            plt.xticks(pos_list, name_list, fontsize=fontsize)                      # fontsize: 15
+            plt.yticks(fontsize=fontsize)                                           
+            plt.xlabel("Conformer", fontsize=fontsize)
+            plt.ylabel('Probability [%]', fontsize=fontsize)
+
+        else:
+            name_list = name_list[:8]
+            average = average.head(8)  # Keep the first 8 rows
+            error = error.head(8)
+            pos_list = np.arange(len(name_list))
+            plt.rcParams['figure.dpi'] = dpi
+
+            ax.xaxis.set_major_locator(ticker.FixedLocator((pos_list)))
+            ax.xaxis.set_major_formatter(ticker.FixedFormatter((name_list)))
+
+            plt.bar(pos_list, average.Prob * 100, yerr=error * 100, color=colors)
+
+            plt.ylim(0, ymax)
+            plt.xticks(pos_list, name_list, fontsize=fontsize)
+            plt.yticks(fontsize=fontsize)
+            plt.xlabel("Conformer", fontsize=fontsize)
+            plt.ylabel('Probability [%]', fontsize=fontsize)
+
+        '''
+        if len(name_list) <= 8:
+            pos_list = np.arange(len(name_list))
+            plt.rcParams['figure.dpi'] = dpi
+            plt.figure()
+            ax = plt.axes()
+            ax.xaxis.set_major_locator(ticker.FixedLocator((pos_list)))
+            ax.xaxis.set_major_formatter(ticker.FixedFormatter((name_list)))   
+            bar = plt.bar(pos_list, average.Prob * 100, yerr = error * 100)
+            for i in range(len(pos_list)):
+                bar[i].set_color(colors[i])
+            plt.ylim(0,ymax)
+            plt.xticks(fontsize = fontsize)
+            plt.yticks(fontsize = fontsize)
+            plt.xlabel("Conformer", fontsize = fontsize)
+            plt.ylabel('Probability [%]', fontsize = fontsize)
+
+        else:
+            name_list = name_list[:8]
+            average = average.head(8)  # Keep the first 8 rows
+            error = error.head(8)
+            pos_list = np.arange(len(name_list))
+            plt.rcParams['figure.dpi'] = dpi
+            plt.figure()
+            ax = plt.axes()
+            ax.xaxis.set_major_locator(ticker.FixedLocator((pos_list)))
+            ax.xaxis.set_major_formatter(ticker.FixedFormatter((name_list)))   
+            bar = plt.bar(pos_list, average.Prob * 100, yerr = error * 100)
+            for i in range(len(pos_list)):
+                bar[i].set_color(colors[i])
+            plt.ylim(0,ymax)
+            plt.xticks(fontsize = fontsize)
+            plt.yticks(fontsize = fontsize)
+            plt.xlabel("Conformer", fontsize = fontsize)
+            plt.ylabel('Probability [%]', fontsize = fontsize)
+        '''
+
         if file is None:
             pass
         else:
@@ -616,7 +673,7 @@ class Glyconformer():
             average, error = self._bootstrap(n_iterations)
             name_list, average, error = self._order_conformer(average, error, threshold) 
             error = error.Error
-            self._plot_distribution(name_list, colors, dpi, ymax, fontsize, file, average, error)
+            return self._plot_distribution(name_list, colors, dpi, ymax, fontsize, file, average, error)
 
     def validate_fep(self): 
 
@@ -1024,7 +1081,8 @@ class Glyconformer():
         # Compute PCA and transform into dataframe with target addition
         principalComponents = pca.fit_transform(colvar_pca)
         principalDf = pd.DataFrame(data = principalComponents)
-        finalDf = pd.concat([principalDf, self.binary_compressed[['Conformer']]], axis = 1)
+        binary_compressed = self.binary_compressed.reset_index(drop=True)
+        finalDf = pd.concat([principalDf, binary_compressed[['Conformer']]], axis = 1)
         
         H, xedges, yedges = np.histogram2d(finalDf.iloc[:,components_plot[0]-1], finalDf.iloc[:,components_plot[1]-1], bins=bins)
 
