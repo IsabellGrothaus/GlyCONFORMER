@@ -52,8 +52,21 @@ def setSessionStates():
 
     if 'container_position' not in st.session_state:
         st.session_state['container_position'] = 0
+    if 'font_size' not in st.session_state:
+        st.session_state['font_size'] = 15
+
+    
+def setPlotStates():
+    st.session_state['plots'] = {'pca': st.session_state['glycan'].pca(), 
+                                 'pca_fep': st.session_state['glycan'].pca_fep(), 
+                                 'validate_fep': st.session_state['glycan'].robust_validate_fep(), 
+                                 'distribution': st.session_state['glycan'].distribution(fontsize = st.session_state['font_size']), 
+                                 'moving_average': st.session_state['glycan'].moving_average(simulation_length = 500, window = 12500), 
+                                 'cumulative_average': st.session_state['glycan'].cumulative_average(simulation_length = 500)
+                                }
 
 setSessionStates()
+
 
 background_text: str = f"""
     The GlyCONFORMER utility was initially designed as a nomenclature to label glycan conformers distinctively, providing an open-access community resource based on JupyterNotebooks.
@@ -149,31 +162,32 @@ def buildHUD():
     if st.session_state['request_state']:
 
         Glycan = st.session_state['glycan']
-        
+
         with container:
             st.header(f"Data for: {Glycan.glycantype}")
-            tab1, tab2, tab3, tab4, tab5 = st.tabs(["pca", "fep", "distribution", "average", "general"])
 
-            with tab1:
-                st.pyplot(Glycan.pca())
-                st.pyplot(Glycan.pca_fep())
+            with st.expander("Configuration", expanded = False):
+                st.session_state['font_size'] = st.select_slider('Font-Size', options = list(range(10, 16)), value = 12)
+                color = st.color_picker("Pick A Color", "#00f900")
+                color = st.color_picker("Pick A Color", "#00f901")
+                color = st.color_picker("Pick A Color", "#00f902")
+
+            tab1, tab2, tab3, tab4 = st.tabs(["pca", "fep", "distribution", "average"])
+
+            with tab1:   
+                st.pyplot(Glycan.pca(fontsize = st.session_state['font_size']))  
+                st.pyplot(Glycan.pca_fep(fontsize = st.session_state['font_size']))
 
             with tab2:
-                st.pyplot(Glycan.robust_validate_fep())
+                st.pyplot(Glycan.robust_validate_fep(fontsize = st.session_state['font_size']))
 
             with tab3:
-                st.pyplot(Glycan.distribution())
+                st.pyplot(Glycan.distribution(fontsize = st.session_state['font_size']))
                 
             with tab4:
-                st.pyplot(Glycan.moving_average(simulation_length = 500, window = 12500))
-                st.pyplot(Glycan.cumulative_average(simulation_length = 500))
+                st.pyplot(Glycan.moving_average(simulation_length = 500, window = 12500, fontsize = st.session_state['font_size']))
+                st.pyplot(Glycan.cumulative_average(simulation_length = 500, fontsize = st.session_state['font_size']))
 
-            with tab5:
-                st.write(Glycan.colvar)
-                st.write(st.session_state['separators'])
-                st.write(Glycan.minima["phi1_2"][0])
-                st.write(Glycan.separator_index)
-                st.write(Glycan.separator)
 
     else:
         
@@ -564,7 +578,7 @@ def checkProgress():
     custom_subheader("4. Select your Specifics (optional)")
 
     if(4 in st.session_state['progress']):
-        slider_value = st.select_slider('Size', options = list(range(10, 101, 10)), value = 100)
+        slider_value = st.select_slider('Size (%)', options = list(range(10, 101, 10)), value = 100)
         st.session_state['length'] = determineLength(slider_value)
 
     else:

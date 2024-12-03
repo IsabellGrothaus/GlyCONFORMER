@@ -13,32 +13,22 @@
     align-items: baseline;
 }
 
-.stProgress > :first-child, .stSlider > :first-child  {
-    width: 40px;
+section:first-child .stProgress > div:first-child {
+    width: 45px;
 }
 
-/* Icon
-
-section:last-child {
-    position: relative;
+section:first-child .stSlider > label {
+    width: 50px;
 }
 
-div:has(> div.stMarkdown > div > p > i) {
-    height: 650px;
+section:last-child .stSlider > label {
+    width: 80px;
 }
 
-div.stMarkdown:has(> div > p > i) {
-    position: absolute;
-    left: 50%;
-    top: 50%;
+.stExpander > details > summary + div {
+    padding-top: 1rem;
+    border-top: 1px rgba(250, 250, 250, 0.2) solid;
 }
-
-i {
-    scale: 5;
-    opacity: 0.1;
-}
-
-*/
 
 /* Headline */
 
@@ -71,6 +61,10 @@ h1 {
     to {
         background-position: 200%;
     }
+}
+
+h2 {
+    margin-bottom: 1rem;
 }
 
 

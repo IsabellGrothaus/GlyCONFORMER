@@ -17,6 +17,7 @@ from sklearn.decomposition import PCA # type: ignore
 from wpca import WPCA, EMPCA # type: ignore
 import warnings
 import plumed # type: ignore
+import streamlit as st
 
 # Suppress FutureWarning messages
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -544,8 +545,8 @@ class Glyconformer():
 
         return name_list, average, error
 
+    # @st.cache_data                parameter 'self' ist nicht hashable für den cache
     def _plot_distribution(self, name_list, colors, dpi, ymax, fontsize, file, average, error):
-        
         fig, ax = plt.subplots(figsize=(6, 4))
 
         if len(name_list) <= 8:
@@ -675,7 +676,9 @@ class Glyconformer():
             error = error.Error
             return self._plot_distribution(name_list, colors, dpi, ymax, fontsize, file, average, error)
 
-    def validate_fep(self): 
+    # @st.cache_data
+    def validate_fep(self, fontsize): 
+
 
         """
         Function that plots free energy profiles with annotated minima and maxima.
@@ -707,9 +710,9 @@ class Glyconformer():
             else:
                 profile = self.fep_files[f][0]
 
-            axs[i].set_title('{}'.format(f),fontsize = 15)
-            axs[i].set_xlabel("Torsion angle [rad]", fontsize = 12)
-            axs[i].set_ylabel("Free energy [kJ/mol]", fontsize = 12)
+            axs[i].set_title('{}'.format(f), fontsize = fontsize + 3)
+            axs[i].set_xlabel("Torsion angle [rad]", fontsize = fontsize)
+            axs[i].set_ylabel("Free energy [kJ/mol]", fontsize = fontsize)
             axs[i].plot(profile.loc[:,"x"], profile.loc[:,"y"], c = "black", linewidth=2)
             axs[i].fill_between(binary, y0, y1, alpha = 0.6, color = "paleturquoise", edgecolor = "none")
             axs[i].fill_between(c, y0, y1, alpha = 0.6, color = "paleturquoise", edgecolor = "none")
@@ -721,33 +724,33 @@ class Glyconformer():
             axs[i].fill_between(A, y0, y1, alpha = 0.6, color = "darkturquoise", edgecolor = "none")
             if len(self.maxima["{}".format(f)]) == 1:
                 axs[i].axvline(self.maxima["{}".format(f)][0], c = co, linestyle = "--")
-                axs[i].text(self.minima["{}".format(f)][0],30, self.label["{}".format(f)][0], fontsize = 12, c = co, weight='bold')
+                axs[i].text(self.minima["{}".format(f)][0],30, self.label["{}".format(f)][0], fontsize = fontsize, c = co, weight='bold')
             elif len(self.maxima["{}".format(f)]) == 2:
                 axs[i].axvline(self.maxima["{}".format(f)][0], c = co, linestyle = "--")
                 axs[i].axvline(self.maxima["{}".format(f)][1], c = co, linestyle = "--")
-                axs[i].text(self.minima["{}".format(f)][0],30, self.label["{}".format(f)][0], fontsize = 12, c = co, weight='bold')
+                axs[i].text(self.minima["{}".format(f)][0],30, self.label["{}".format(f)][0], fontsize = fontsize, c = co, weight='bold')
                 # print(f"--------------------------------------: {f}")
-                axs[i].text(self.minima["{}".format(f)][1],30, self.label["{}".format(f)][1], fontsize = 12, c = co, weight='bold')
-                axs[i].text(self.minima["{}".format(f)][2],30, self.label["{}".format(f)][2], fontsize = 12, c = co, weight='bold')
+                axs[i].text(self.minima["{}".format(f)][1],30, self.label["{}".format(f)][1], fontsize = fontsize, c = co, weight='bold')
+                axs[i].text(self.minima["{}".format(f)][2],30, self.label["{}".format(f)][2], fontsize = fontsize, c = co, weight='bold')
 
             elif len(self.maxima["{}".format(f)]) == 3:
                 axs[i].axvline(self.maxima["{}".format(f)][0], c = co, linestyle = "--")
                 axs[i].axvline(self.maxima["{}".format(f)][1], c = co, linestyle = "--")
                 axs[i].axvline(self.maxima["{}".format(f)][2], c = co, linestyle = "--")
-                axs[i].text(self.minima["{}".format(f)][0],30, self.label["{}".format(f)][0], fontsize = 12, c = co, weight='bold')
-                axs[i].text(self.minima["{}".format(f)][1],30, self.label["{}".format(f)][1], fontsize = 12, c = co, weight='bold')
-                axs[i].text(self.minima["{}".format(f)][2],30, self.label["{}".format(f)][2], fontsize = 12, c = co, weight='bold')
-                axs[i].text(self.minima["{}".format(f)][3],30, self.label["{}".format(f)][3], fontsize = 12, c = co, weight='bold')
+                axs[i].text(self.minima["{}".format(f)][0],30, self.label["{}".format(f)][0], fontsize = fontsize, c = co, weight='bold')
+                axs[i].text(self.minima["{}".format(f)][1],30, self.label["{}".format(f)][1], fontsize = fontsize, c = co, weight='bold')
+                axs[i].text(self.minima["{}".format(f)][2],30, self.label["{}".format(f)][2], fontsize = fontsize, c = co, weight='bold')
+                axs[i].text(self.minima["{}".format(f)][3],30, self.label["{}".format(f)][3], fontsize = fontsize, c = co, weight='bold')
 
         plt.show()
 
         return fig
 
-    def robust_validate_fep(self):
+    def robust_validate_fep(self, fontsize):
 
         for order_depth in range(1, 4):
             try:
-                fig = self.validate_fep()
+                fig = self.validate_fep(fontsize)
 
                 return fig
             except IndexError:
@@ -756,13 +759,14 @@ class Glyconformer():
                 self.order_min = 5 - order_depth
                 self.maxima, self.minima = self._find_min_max()
 
+    # @st.cache_data
     def cumulative_average(self,
                            simulation_length,
+                           fontsize,
                            ranks = 3,
                            label = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"],
                            color = ["#173c4d","#146b65","#4e9973","#a7c09f","#dfa790","#c76156","#9a2b4c","#600b4a"],
                            linestyle = ["-", "-", "-", "-", "-", "-", "-", "-"],
-                           fontsize = 15,
                            dpi = 300,
                            ymax = 100,
                            file=None):
@@ -795,9 +799,9 @@ class Glyconformer():
             figure, ax = plt.subplots(figsize=(10, 6))  # Adjust figure size as needed
 
             plt.rcParams['figure.dpi'] = dpi
-            ax.set_xlabel("Time [ns]", fontsize=fontsize)
-            ax.set_ylabel("Probability [%]", fontsize=fontsize)
-            ax.tick_params(axis='both', which='major', labelsize=fontsize)
+            ax.set_xlabel("Time [ns]", fontsize = fontsize)
+            ax.set_ylabel("Probability [%]", fontsize = fontsize)
+            ax.tick_params(axis='both', which='major', labelsize = fontsize)
 
             # Set default labels, colors, and linestyles if not provided
             if label is None:
@@ -810,19 +814,20 @@ class Glyconformer():
             for j, l, c, line in zip(range(ranks), label, color, linestyle):
                 ax.plot(indices[j], occurrences[j], label=l, color=c, linestyle=line)
 
-            ax.legend(fontsize=fontsize)
+            ax.legend(fontsize = fontsize)
             ax.set_ylim(0, ymax)
 
             return figure
 
+    # @st.cache_data
     def moving_average(self,
+                       fontsize,
                        simulation_length,
                        window = 5000,
                        ranks = 3,
                        label = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"],
                        color = ["#173c4d","#146b65","#4e9973","#a7c09f","#dfa790","#c76156","#9a2b4c","#600b4a"],
                        linestyle = ["-", "-", "-", "-", "-", "-", "-", "-"],
-                       fontsize = 15,
                        dpi = 600,
                        ymax = 100,
                        file = None):
@@ -855,14 +860,14 @@ class Glyconformer():
             
             fig, ax = plt.subplots(figsize=(10, 6))  # Adjust figure size as needed
 
-            plt.xlabel("Time [ns]", fontsize=fontsize)
-            plt.ylabel("Probability [%]", fontsize=fontsize)
-            plt.tick_params(axis='both', which='major', labelsize=fontsize)
+            plt.xlabel("Time [ns]", fontsize = fontsize)
+            plt.ylabel("Probability [%]", fontsize = fontsize)
+            plt.tick_params(axis='both', which='major', labelsize = fontsize)
 
             for j, l, c, line in zip(range(0, len(top)), label, color, linestyle):
                 ax.plot(occurrences[j].index * (simulation_length/self.length), occurrences[j].loc[:, "rollcount"], label=l, color=c, linestyle=line)
 
-            plt.legend(fontsize=fontsize)
+            plt.legend(fontsize = fontsize)
             plt.ylim(0, ymax)
 
             # Return the figure object
@@ -872,6 +877,7 @@ class Glyconformer():
             print("Moving average can not be computed for weighted data")
             return None  # Indicate failure for weighted data
 
+    # @st.cache_data
     def _plot_pca(self, top, label, color, components_plot, dpi, figsize, fontsize, all, all_color, all_label, marker, conformer, legend, file, biplot, biplot_fontsize,pick, datatopick, colorpick, coefficients, ticks, finalDf=None, pca_df_scaled=None, loadings_r=None):
             #Plot
             plt.rcParams['figure.dpi'] = dpi
@@ -1057,9 +1063,10 @@ class Glyconformer():
         else:
             return self._plot_pca(top, label, color, components_plot, dpi, figsize, fontsize, all, all_color, all_label, marker, conformer, legend, file, biplot, biplot_fontsize, pick, datatopick, colorpick, coefficients, ticks, finalDf=finalDf)
 
+    # @st.cache_data
     def pca_fep(self,
+                fontsize,
                 components = 2,
-                fontsize = 10,
                 dpi = 600,
                 components_plot = [1,2],
                 figsize = [5,5],
@@ -1107,8 +1114,8 @@ class Glyconformer():
             ax.axes.xaxis.set_visible(False)
             ax.axes.yaxis.set_visible(False)
 
-        ax.set_xlabel('Principal Component {}'.format(components_plot[0]), fontsize=fontsize)
-        ax.set_ylabel('Principal Component {}'.format(components_plot[1]), fontsize=fontsize)
+        ax.set_xlabel('Principal Component {}'.format(components_plot[0]), fontsize = fontsize)
+        ax.set_ylabel('Principal Component {}'.format(components_plot[1]), fontsize = fontsize)
 
         cp = plt.contourf(yedges[1:], xedges[1:], F.T, colorrange, cmap=cmap, alpha=alpha)
         
