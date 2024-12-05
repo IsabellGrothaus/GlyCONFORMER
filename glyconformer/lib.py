@@ -630,10 +630,10 @@ class Glyconformer():
         return fig
 
     def distribution(self,
+                     fontsize,
+                     colors, 
                      threshold=2,
                      ymax=100, 
-                     fontsize=15, 
-                     colors=["#173c4d","#146b65","#4e9973","#a7c09f","#dfa790","#c76156","#9a2b4c","#600b4a"],
                      dpi=300,
                      file=None,
                      n_iterations=1000):
@@ -763,9 +763,9 @@ class Glyconformer():
     def cumulative_average(self,
                            simulation_length,
                            fontsize,
+                           color,
                            ranks = 3,
                            label = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"],
-                           color = ["#173c4d","#146b65","#4e9973","#a7c09f","#dfa790","#c76156","#9a2b4c","#600b4a"],
                            linestyle = ["-", "-", "-", "-", "-", "-", "-", "-"],
                            dpi = 300,
                            ymax = 100,
@@ -822,11 +822,11 @@ class Glyconformer():
     # @st.cache_data
     def moving_average(self,
                        fontsize,
+                       color,
                        simulation_length,
                        window = 5000,
                        ranks = 3,
                        label = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"],
-                       color = ["#173c4d","#146b65","#4e9973","#a7c09f","#dfa790","#c76156","#9a2b4c","#600b4a"],
                        linestyle = ["-", "-", "-", "-", "-", "-", "-", "-"],
                        dpi = 600,
                        ymax = 100,
@@ -972,6 +972,8 @@ class Glyconformer():
             return fig
 
     def pca(self,
+            fontsize,
+            color,
             components = 2,
             ranks = 3,
             components_plot = [1,2], #only 2D supported #
@@ -981,8 +983,6 @@ class Glyconformer():
             marker = ".",
             conformer = True,
             label = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"],
-            color = ["#173c4d","#146b65","#4e9973","#a7c09f","#dfa790","#c76156","#9a2b4c","#600b4a"],
-            fontsize = 7,
             dpi = 600,
             figsize = [5,5],
             ticks = True,

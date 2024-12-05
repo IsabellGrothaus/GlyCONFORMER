@@ -54,16 +54,8 @@ def setSessionStates():
         st.session_state['container_position'] = 0
     if 'font_size' not in st.session_state:
         st.session_state['font_size'] = 15
-
-    
-def setPlotStates():
-    st.session_state['plots'] = {'pca': st.session_state['glycan'].pca(), 
-                                 'pca_fep': st.session_state['glycan'].pca_fep(), 
-                                 'validate_fep': st.session_state['glycan'].robust_validate_fep(), 
-                                 'distribution': st.session_state['glycan'].distribution(fontsize = st.session_state['font_size']), 
-                                 'moving_average': st.session_state['glycan'].moving_average(simulation_length = 500, window = 12500), 
-                                 'cumulative_average': st.session_state['glycan'].cumulative_average(simulation_length = 500)
-                                }
+    if 'colors' not in st.session_state:
+        st.session_state['colors'] = {'first_color': '#173c4d', 'second_color': '#146b65', 'third_color': '#4e9973'}
 
 setSessionStates()
 
@@ -168,25 +160,31 @@ def buildHUD():
 
             with st.expander("Configuration", expanded = False):
                 st.session_state['font_size'] = st.select_slider('Font-Size', options = list(range(10, 16)), value = 12)
-                color = st.color_picker("Pick A Color", "#00f900")
-                color = st.color_picker("Pick A Color", "#00f901")
-                color = st.color_picker("Pick A Color", "#00f902")
+                
+                st.write("Pick a color:")
+                subcol1, subcol2, subcol3 = st.columns(3, gap = "medium")
+                with subcol1:
+                    st.session_state['colors']['first_color'] = st.color_picker("Pick A Color", "#173c4d", label_visibility = "collapsed")
+                with subcol2:
+                    st.session_state['colors']['second_color'] = st.color_picker("Pick A Color", "#146b65", label_visibility = "collapsed")
+                with subcol3:
+                    st.session_state['colors']['third_color'] = st.color_picker("Pick A Color", "#4e9973", label_visibility = "collapsed")
 
             tab1, tab2, tab3, tab4 = st.tabs(["pca", "fep", "distribution", "average"])
 
             with tab1:   
-                st.pyplot(Glycan.pca(fontsize = st.session_state['font_size']))  
+                st.pyplot(Glycan.pca(fontsize = st.session_state['font_size'], color = [st.session_state['colors']['first_color'],st.session_state['colors']['second_color'],st.session_state['colors']['third_color'],"#a7c09f","#dfa790","#c76156","#9a2b4c","#600b4a"]))  
                 st.pyplot(Glycan.pca_fep(fontsize = st.session_state['font_size']))
 
             with tab2:
                 st.pyplot(Glycan.robust_validate_fep(fontsize = st.session_state['font_size']))
 
             with tab3:
-                st.pyplot(Glycan.distribution(fontsize = st.session_state['font_size']))
+                st.pyplot(Glycan.distribution(fontsize = st.session_state['font_size'], colors = [st.session_state['colors']['first_color'],st.session_state['colors']['second_color'],st.session_state['colors']['third_color'],"#a7c09f","#dfa790","#c76156","#9a2b4c","#600b4a"]))
                 
             with tab4:
-                st.pyplot(Glycan.moving_average(simulation_length = 500, window = 12500, fontsize = st.session_state['font_size']))
-                st.pyplot(Glycan.cumulative_average(simulation_length = 500, fontsize = st.session_state['font_size']))
+                st.pyplot(Glycan.moving_average(simulation_length = 500, window = 12500, fontsize = st.session_state['font_size'], color = [st.session_state['colors']['first_color'],st.session_state['colors']['second_color'],st.session_state['colors']['third_color'],"#a7c09f","#dfa790","#c76156","#9a2b4c","#600b4a"]))
+                st.pyplot(Glycan.cumulative_average(simulation_length = 500, fontsize = st.session_state['font_size'], color = [st.session_state['colors']['first_color'],st.session_state['colors']['second_color'],st.session_state['colors']['third_color'],"#a7c09f","#dfa790","#c76156","#9a2b4c","#600b4a"]))
 
 
     else:
@@ -335,8 +333,7 @@ def initialize_custom_Glycan(glycantype: str):
     return Glycan
 
 
-
-# -------- local FUNCTIONS--------- #
+# -------- advanced FUNCTIONS--------- #
 
 def on_change():
 

@@ -25,9 +25,23 @@ section:last-child .stSlider > label {
     width: 80px;
 }
 
+
+/* Expander */
+
 .stExpander > details > summary + div {
     padding-top: 1rem;
     border-top: 1px rgba(250, 250, 250, 0.2) solid;
+}
+
+section:last-child .element-container:has(> .stSlider) + div p {
+    word-break: break-word;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+section:last-child .element-container:has(> .stSlider) + div + div > div  {
+    width: 30px;
+    flex: unset;
 }
 
 /* Headline */
