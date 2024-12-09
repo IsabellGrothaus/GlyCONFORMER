@@ -8,6 +8,7 @@ import plumed # type: ignore
 import pandas as pd # type: ignore
 import os as os
 import sys
+from st_clickable_images import clickable_images
 
 sys.path.append("/home/eberl/bachelor_project/GlyCONFORMER/glyconformer/")
 from lib import Glyconformer
@@ -209,7 +210,7 @@ def buildHUD():
                     st.session_state['container_position'] = 0
                 with st.container():
                     st.subheader("How it works")
-                    st.image("../TUTORIAL/Conformer_string.png", caption=caption_text)
+                    st.image("images/workflow.png", caption = caption_text)
                     st.write(how_it_works_text)
                 
 
@@ -223,6 +224,18 @@ def buildHUD():
                 with right:
                     if st.button("behind the project >", use_container_width=True):
                         st.session_state['container_position'] = -110
+
+                clicked = clickable_images(
+                    [
+                        "https://images.unsplash.com/photo-1565130838609-c3a86655db61?w=700",
+                    ],
+                    titles=["Image 1"],
+                    img_style={"margin": "5px", "height": "200px"},
+                )
+
+                st.markdown(f"Image #{clicked} clicked" if clicked > -1 else "No image clicked")
+
+
 
             with main_col3:
                 if st.button("< back", use_container_width=True):
@@ -250,14 +263,35 @@ def buildHUD():
 
 # -------- local FUNCTIONS--------- #
 
-def loadLocalGlycans(): 
+def loadLocalTypes(): 
 
     local_glycans = []
-    for i in os.listdir("../LIBRARY_GLYCANS/"):
+    for i in os.listdir("../LIBRARY_GLYCANS"):
         if("__" not in i):
             local_glycans.append(i)
 
     return local_glycans
+
+def loadLocalGlycans(glycan_type: str): 
+
+    glycans: dict = {}
+
+    for i in os.listdir(f"../LIBRARY_GLYCANS/{glycan_type}"):
+        if("__" not in i):
+            glycans[i] = {}
+            for e in os.listdir(f"../LIBRARY_GLYCANS/{glycan_type}/{i}"):
+                glycans[i][e] = {}
+
+                glycans[i][e]['name'] = e
+
+                for file in os.listdir(f"../LIBRARY_GLYCANS/{glycan_type}/{i}/{e}"):
+                    
+                    if file.endswith(".png"):
+                        glycans[i][e]['picture'] = f"../LIBRARY_GLYCANS/{glycan_type}/{i}/{e}/{file}"
+                    else:
+                        glycans[i][e]['picture'] = "streamlit/images/logo_university_bremen.png"
+
+    return glycans
 
 def readAnglesData(path, file):
     with importlib.resources.files(path).joinpath(file).open() as f:
@@ -592,7 +626,7 @@ def checkSelect():
 
     selected_glycan = st.selectbox(
                                     "...",
-                                    loadLocalGlycans(), 
+                                    loadLocalTypes(), 
                                     index = None,                              # initialisiert eine leere Auswahlbox                                           
                                     label_visibility = "collapsed",
                                     key = "glycans_select",
@@ -600,9 +634,33 @@ def checkSelect():
                                     on_change = on_change
     )
 
-    if selected_glycan is not None and st.session_state['request_access']:               # falls Eintrag Glycan ist UND gewählt wurde -> Initialisierung ist möglich
-        st.session_state['glycan'] = initialize_local_Glycan(selected_glycan)
-        st.session_state['request_access'] = False
+    if selected_glycan is not None:                    
+        # st.session_state['glycan'] = initialize_local_Glycan(selected_glycan)
+        local_glycans: dict = loadLocalGlycans(selected_glycan)
+
+
+        for key, value in local_glycans.items():
+            st.write(key)
+            data = []
+
+            for glycan in value.items():
+                data.append(glycan)
+                    
+            
+            data_groups = [data[i:i+3] for i in range(0, len(data), 3)]
+
+            for group in data_groups:
+                col1, col2, col3 = st.columns(3)
+                for i in range(0, len(group)):
+                    print(f"index: {i}, glycan: {group[i][1]}")
+                    if i == 0:
+                        col1.write(group[i])
+                    elif i == 1:
+                        col2.write(group[i])
+                    else:
+                        col3.write(group[i])
+
+
 
 
 # -------- SIDEBAR --------- #

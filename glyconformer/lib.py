@@ -828,7 +828,7 @@ class Glyconformer():
                        ranks = 3,
                        label = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"],
                        linestyle = ["-", "-", "-", "-", "-", "-", "-", "-"],
-                       dpi = 600,
+                       dpi = 300,
                        ymax = 100,
                        file = None):
         
