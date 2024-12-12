@@ -26,7 +26,7 @@ section:last-child .stSlider > label {
 }
 
 
-/* Expander */
+/* Expander (Configurator) */
 
 .stExpander > details > summary + div {
     padding-top: 1rem;
@@ -89,6 +89,12 @@ h2 {
     /* background-color: unset;
     border: unset;  */
 }
+
+.element-container:has(> div > .stImage) + .element-container p {
+    font-size: 10pt;
+}
+
+
 
 /*
 [data-testid='stBaseButton-secondary']:active {
@@ -295,7 +301,7 @@ div:has(> .stMarkdown > div > .custom-subheader-inactive ),  div:has(> .stMarkdo
     display: none;
 }
 
-.stAppViewContainer > section:last-child [data-testid='stHeaderActionElements'], .stAppViewContainer > section:last-child [data-testid='StyledFullScreenButton'] {
+.stAppViewContainer > section:last-child [data-testid='stHeaderActionElements'], .stAppViewContainer > section:last-child [data-testid='StyledFullScreenButton'], section:first-child [data-testid='StyledFullScreenButton'] {
     display: none;
 }
 

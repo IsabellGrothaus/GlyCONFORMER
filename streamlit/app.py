@@ -43,9 +43,6 @@ def setSessionStates():
 
     if 'request_state' not in st.session_state:
         st.session_state['request_state'] = False
-    if 'request_access' not in st.session_state:
-        st.session_state['request_access'] = False
-
 
     if 'dataframe' not in st.session_state:
         st.session_state['dataframe'] = None
@@ -64,12 +61,6 @@ def setSessionStates():
         st.session_state['font_size'] = 15
     if 'colors' not in st.session_state:
         st.session_state['colors'] = {'first_color': '#173c4d', 'second_color': '#146b65', 'third_color': '#4e9973'}
-
-    if 'selected_glycan' not in st.session_state:
-        st.session_state['selected_glycan'] = {'name': None, 'subject': None}
-    
-    if 'checked_local_glycans' not in st.session_state:
-        st.session_state['checked_local_glycans'] = {}
 
 
 setSessionStates()
@@ -293,8 +284,9 @@ def loadLocalGlycans(glycan_type: str):
                     
                     if file.endswith(".png"):
                         glycans[i][e]['picture'] = f"../LIBRARY_GLYCANS/{glycan_type}/{i}/{e}/{file}"
+                        break
                     else:
-                        glycans[i][e]['picture'] = "streamlit/images/logo_university_bremen.png"
+                        glycans[i][e]['picture'] = f"../LIBRARY_GLYCANS/glycan_test.png"
 
     return glycans
 
@@ -378,10 +370,6 @@ def initialize_custom_Glycan(glycantype: str):
 
 # -------- advanced FUNCTIONS--------- #
 
-def on_change():
-
-    st.session_state['request_access'] = True
-
 def change_opacity(element_class, index, opacity):
 
     # script = f"<script>document.getElementsByClassName('{element_class}')[{index}].childNodes[0].style.opacity = '{opacity}%'; console.log(document.getElementsByClassName('{element_class}')[{index}].childNodes[0])</script>"
@@ -431,35 +419,6 @@ def stream_data(text: str, id: str):
         st.session_state['previous_text'][id] = st.session_state['previous_text'][id] + text[i]
         time.sleep(0.004)
     
-def checkForCheckedImages(local_glycans: dict):
-    
-    isActivated = False
-
-    for key, value in local_glycans.items():
-        for sub_key in value.keys():
-            
-            # value = st.session_state[sub_key]           # iterativer Zugriff ohne lokale Variable nicht möglich -> print(f"session_state[{sub_key}]")
-            # print(f"{sub_key}: {value}")
-
-            if st.session_state[sub_key] != None:
-                isActivated = True
-
-    return isActivated
-
-def check(local_glycans: dict):
-    glycanKey = "..."
-
-    for key, value in local_glycans.items():
-        for sub_key in value.keys():
-            
-            if st.session_state[sub_key] != None:       # wenn ein Bild geklickt wurde und daher nicht 'None' ist
-
-                if st.session_state['selected_local_glycan'] != st.session_state[sub_key]:     # wenn das geklickte Bild nicht das zuvor geklickte Bild ist
-                    st.session_state['selected_local_glycan'] = sub_key
-                    glycanKey = key
-
-
-    return glycanKey
 
 
 def determineLength(value: int):
@@ -657,47 +616,17 @@ def checkProgress():
 
     # ------- BUTTON ------- #
 
-    if st.button("start", use_container_width = True, disabled = not is_completed):
+    if st.button("start", use_container_width = True, type = "primary" ,disabled = not is_completed):
         st.session_state['glycan'] = initialize_custom_Glycan(st.session_state['dataframe_upload'].name)
 
+
 # @st.fragment
-def buildFragment(type: str, subject: str, name: str):
-    clickable_images(
-            ["https://images.unsplash.com/photo-1565130838609-c3a86655db61?w=700"],
-            titles=[f"{name}"],
-            img_style={"height": "150px"},
-            key=f"{name}",
-    )
-    
-    st.session_state['checked_local_glycans'][name] = st.session_state[name]
+def buildFragment(picture :str, type: str, subject: str, name: str):
 
-    if st.session_state[name] == 0:
-        # print(f"{subject}, {name}")
+    st.image(picture, caption = None)
 
-        st.session_state['selected_glycan']['name'] = name
-        st.session_state['selected_glycan']['subject'] = subject
-
-        
-
-
-def resetCheckedGlycans():
-    for key in st.session_state['checked_local_glycans']:
-        st.session_state['checked_local_glycans'][key] = None
-
-def getCheckedGlycan():
-    glycan: str = None
-
-    for key in st.session_state['checked_local_glycans']:
-        if st.session_state['checked_local_glycans'][key] == 0:
-            glycan = key
-
-    return glycan
-
-def setCheckedGlycan():
-    for key in st.session_state['checked_local_glycans']:
-        st.session_state['checked_local_glycans'][key] = st.session_state[key]
-
-
+    if st.button(f"{name}", use_container_width = True, key = f"{name}"):
+        st.session_state['glycan'] = initialize_local_Glycan(type, subject, name)
 
 def checkSelect():
     st.subheader("1. Select a dataset")
@@ -709,7 +638,6 @@ def checkSelect():
                                     label_visibility = "collapsed",
                                     key = "glycans_select",
                                     placeholder = "choose one of the following glycans",
-                                    on_change = on_change
     )
 
     if selected_Type is not None:                    
@@ -732,41 +660,15 @@ def checkSelect():
                     # print(f"index: {i}, glycan: {group[i][1]}")
                     if i == 0:
                         with col1:                       
-                            buildFragment(selected_Type, key, group[i][1]['name'])
+                            buildFragment(group[i][1]['picture'], selected_Type, key, group[i][1]['name'])
 
                     elif i == 1:
                         with col2:                           
-                            buildFragment(selected_Type, key, group[i][1]['name'])
+                            buildFragment(group[i][1]['picture'], selected_Type, key, group[i][1]['name'])
 
                     else:
                         with col3:                         
-                            buildFragment(selected_Type, key, group[i][1]['name'])
-
-
-        '''
-        st.session_state['selected_glycan'] = getCheckedGlycan()
-        print(st.session_state['checked_local_glycans'])
-        print(st.session_state['selected_glycan'])
-        resetCheckedGlycans()
-        print(st.session_state['checked_local_glycans'])
-        print("-----------")
-        '''     
-
-        print(st.session_state['selected_glycan'])
-
-
-
-        if st.session_state['selected_glycan']['name'] != None:
-            st.session_state['glycan'] = initialize_local_Glycan(selected_Type, st.session_state['selected_glycan']['subject'], st.session_state['selected_glycan']['name'])
-                
-        
-        
-        # key = check(local_glycans)
-        # print(st.session_state['selected_local_glycan'])
-        #  if checkForCheckedImages(local_glycans):
-        #    st.session_state['glycan'] = initialize_local_Glycan(selected_Type, key, st.session_state['selected_local_glycan'])
-
-
+                            buildFragment(group[i][1]['picture'], selected_Type, key, group[i][1]['name'])
 
 
 
