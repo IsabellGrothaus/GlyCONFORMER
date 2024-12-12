@@ -1,5 +1,6 @@
 import csv
 import importlib
+from pathlib import Path
 import tempfile
 import time
 import streamlit as st
@@ -23,6 +24,12 @@ st.set_page_config(
         'Report a bug': 'https://github.com/IsabellGrothaus/GlyCONFORMER',
     }
 )
+
+with open('script.js') as f:
+    st.markdown(f"<script>{f.read()}</script>", unsafe_allow_html=True)
+
+with open('styles.css') as f:
+    st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 
 # -------- INITIALIZATION --------- #
@@ -57,6 +64,12 @@ def setSessionStates():
         st.session_state['font_size'] = 15
     if 'colors' not in st.session_state:
         st.session_state['colors'] = {'first_color': '#173c4d', 'second_color': '#146b65', 'third_color': '#4e9973'}
+
+    if 'selected_glycan' not in st.session_state:
+        st.session_state['selected_glycan'] = {'name': None, 'subject': None}
+    
+    if 'checked_local_glycans' not in st.session_state:
+        st.session_state['checked_local_glycans'] = {}
 
 
 setSessionStates()
@@ -148,9 +161,11 @@ how_it_works_text: str = f"""
 """
 
 
+
 # -------- MAIN PAGE --------- #
 
 container = st.container()
+
 
 def buildHUD():
     if st.session_state['request_state']:
@@ -284,8 +299,10 @@ def loadLocalGlycans(glycan_type: str):
     return glycans
 
 def readAnglesData(path, file):
-    with importlib.resources.files(path).joinpath(file).open() as f:
+
+    with open(os.path.join(Path(os.getcwd()).parent, path, file), 'r') as f:        # benötigt den absoluten Pfad
         feature = f.read()
+
     feature = feature.split()
 
     return feature
@@ -295,7 +312,7 @@ def readSeparatorData(path, file):
     dictionary = {'separator_index': [], 'separator': []}
 
     if path is not None:            # liest aus einer lokalen Datei 
-        with importlib.resources.files(path).joinpath(file).open('r') as f:         # öffnet Datei im Lesemodus 'r'
+        with open(os.path.join(Path(os.getcwd()).parent, path, file), 'r') as f:        # benötigt den absoluten Pfad
             reader = csv.reader(f, delimiter=' ')      
 
             for row in reader:
@@ -311,18 +328,20 @@ def readSeparatorData(path, file):
     return dictionary
 
 # @st.cache_data                              # wenn der Glykan-String bereits abgerufen wurde, bezieht er die Daten aus dem Cache
-def initialize_local_Glycan(subject: str, glycantype: str):
-    # st.session_state['request_state'] = True
+def initialize_local_Glycan(type: str, subject: str, glycan: str):
+    st.session_state['request_state'] = True
 
     Glycan = Glyconformer(
-        glycantype =        glycantype,
-        inputfile =         "../LIBRARY_GLYCANS/{}/{}/angles.dat".format(subject, glycantype),
-        fepdir =            "../LIBRARY_GLYCANS/{}/{}".format(subject, glycantype), 
+        glycantype =        glycan,
+        inputfile =         f"../LIBRARY_GLYCANS/{type}/{subject}/{glycan}/colvar.dat",
+        fepdir =            f"../LIBRARY_GLYCANS/{type}/{subject}/{glycan}", 
 
-        angles =            readAnglesData("LIBRARY_GLYCANS.{}.{}".format(subject, glycantype), "angles.dat"), 
-        omega_angles =      readAnglesData("LIBRARY_GLYCANS.{}.{}".format(subject, glycantype), "omega_angles.dat"), 
-        separator_index =   readSeparatorData("LIBRARY_GLYCANS.{}.{}".format(subject, glycantype), "separator.dat")['separator_index'], 
-        separator =         readSeparatorData("LIBRARY_GLYCANS.{}.{}".format(subject, glycantype), "separator.dat")['separator'], 
+        angles =            readAnglesData(f"LIBRARY_GLYCANS/{type}/{subject}/{glycan}", "angles.dat"), 
+        omega_angles =      readAnglesData(f"LIBRARY_GLYCANS/{type}/{subject}/{glycan}", "omega_angles.dat"), 
+
+        separator_index =   readSeparatorData(f"LIBRARY_GLYCANS/{type}/{subject}/{glycan}", "separator.dat")['separator_index'], 
+        separator =         readSeparatorData(f"LIBRARY_GLYCANS/{type}/{subject}/{glycan}", "separator.dat")['separator'],
+
         fep_files =         {},
         order_max =         5,
         order_min =         5, 
@@ -331,14 +350,7 @@ def initialize_local_Glycan(subject: str, glycantype: str):
         colvar =            None,
     )
 
-    print(Glycan.inputfile)
-    print(Glycan.fepdir)
-    print(Glycan.angles)
-    print(Glycan.omega_angles)
-    print(Glycan.separator_index)
-    print(Glycan.separator)
-
-    # return Glycan
+    return Glycan
 
 def initialize_custom_Glycan(glycantype: str):
     st.session_state['request_state'] = True
@@ -421,12 +433,33 @@ def stream_data(text: str, id: str):
     
 def checkForCheckedImages(local_glycans: dict):
     
+    isActivated = False
+
     for key, value in local_glycans.items():
         for sub_key in value.keys():
             
-            value = st.session_state[sub_key]           # iterativer Zugriff ohne lokale Variable nicht möglich -> print(f"session_state[{sub_key}]")
-            print(f"{sub_key}: {value}")
+            # value = st.session_state[sub_key]           # iterativer Zugriff ohne lokale Variable nicht möglich -> print(f"session_state[{sub_key}]")
+            # print(f"{sub_key}: {value}")
 
+            if st.session_state[sub_key] != None:
+                isActivated = True
+
+    return isActivated
+
+def check(local_glycans: dict):
+    glycanKey = "..."
+
+    for key, value in local_glycans.items():
+        for sub_key in value.keys():
+            
+            if st.session_state[sub_key] != None:       # wenn ein Bild geklickt wurde und daher nicht 'None' ist
+
+                if st.session_state['selected_local_glycan'] != st.session_state[sub_key]:     # wenn das geklickte Bild nicht das zuvor geklickte Bild ist
+                    st.session_state['selected_local_glycan'] = sub_key
+                    glycanKey = key
+
+
+    return glycanKey
 
 
 def determineLength(value: int):
@@ -627,19 +660,42 @@ def checkProgress():
     if st.button("start", use_container_width = True, disabled = not is_completed):
         st.session_state['glycan'] = initialize_custom_Glycan(st.session_state['dataframe_upload'].name)
 
-@st.fragment
-def buildFragment(subject: str, name: str):
+# @st.fragment
+def buildFragment(type: str, subject: str, name: str):
     clickable_images(
             ["https://images.unsplash.com/photo-1565130838609-c3a86655db61?w=700"],
             titles=[f"{name}"],
             img_style={"height": "150px"},
-            key=f"{name}"
+            key=f"{name}",
     )
     
-    if st.session_state[name] == 0:
-        # st.session_state['glycan'] = initialize_local_Glycan(subject, name)
-        print(f"{subject}, {name}")
+    st.session_state['checked_local_glycans'][name] = st.session_state[name]
 
+    if st.session_state[name] == 0:
+        # print(f"{subject}, {name}")
+
+        st.session_state['selected_glycan']['name'] = name
+        st.session_state['selected_glycan']['subject'] = subject
+
+        
+
+
+def resetCheckedGlycans():
+    for key in st.session_state['checked_local_glycans']:
+        st.session_state['checked_local_glycans'][key] = None
+
+def getCheckedGlycan():
+    glycan: str = None
+
+    for key in st.session_state['checked_local_glycans']:
+        if st.session_state['checked_local_glycans'][key] == 0:
+            glycan = key
+
+    return glycan
+
+def setCheckedGlycan():
+    for key in st.session_state['checked_local_glycans']:
+        st.session_state['checked_local_glycans'][key] = st.session_state[key]
 
 
 
@@ -675,25 +731,42 @@ def checkSelect():
                 for i in range(0, len(group)):
                     # print(f"index: {i}, glycan: {group[i][1]}")
                     if i == 0:
-                        with col1:
-                            buildFragment(key, group[i][1]['name'])
+                        with col1:                       
+                            buildFragment(selected_Type, key, group[i][1]['name'])
 
                     elif i == 1:
-                        with col2:
-                            buildFragment(key, group[i][1]['name'])
+                        with col2:                           
+                            buildFragment(selected_Type, key, group[i][1]['name'])
+
                     else:
-                        with col3:
-                            buildFragment(key, group[i][1]['name'])
+                        with col3:                         
+                            buildFragment(selected_Type, key, group[i][1]['name'])
 
 
         '''
-        checkForCheckedImages(local_glycans)
+        st.session_state['selected_glycan'] = getCheckedGlycan()
+        print(st.session_state['checked_local_glycans'])
+        print(st.session_state['selected_glycan'])
+        resetCheckedGlycans()
+        print(st.session_state['checked_local_glycans'])
+        print("-----------")
+        '''     
 
-        print("------------------")
+        print(st.session_state['selected_glycan'])
+
+
+
+        if st.session_state['selected_glycan']['name'] != None:
+            st.session_state['glycan'] = initialize_local_Glycan(selected_Type, st.session_state['selected_glycan']['subject'], st.session_state['selected_glycan']['name'])
+                
         
-        if selected_Glycan is not None:
-            st.session_state['glycan'] = initialize_local_Glycan(selected_Glycan)
-        '''
+        
+        # key = check(local_glycans)
+        # print(st.session_state['selected_local_glycan'])
+        #  if checkForCheckedImages(local_glycans):
+        #    st.session_state['glycan'] = initialize_local_Glycan(selected_Type, key, st.session_state['selected_local_glycan'])
+
+
 
 
 
@@ -716,8 +789,3 @@ with st.sidebar:
 
 # -------- ### --------- #
 
-with open('script.js') as f:
-    st.markdown(f"<script>{f.read()}</script>", unsafe_allow_html=True)
-
-with open('styles.css') as f:
-    st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)

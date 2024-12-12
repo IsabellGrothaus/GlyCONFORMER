@@ -183,6 +183,8 @@ class Glyconformer():
 
         self.binary, self.binary_compressed, self.count, self.angles_separator = self._create_binary()
     
+
+    
     def _find_min_max(self):
         """ 
         Finds minima and maxima of a 1D array read from file.
