@@ -286,7 +286,7 @@ def loadLocalGlycans(glycan_type: str):
                         glycans[i][e]['picture'] = f"../LIBRARY_GLYCANS/{glycan_type}/{i}/{e}/{file}"
                         break
                     else:
-                        glycans[i][e]['picture'] = f"../LIBRARY_GLYCANS/glycan_test.png"
+                        glycans[i][e]['picture'] = f"../glycan_test.png"
 
     return glycans
 

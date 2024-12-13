@@ -35,8 +35,8 @@ def _readinputfile(inputfile, angles, self):
             colvar = plumed.read_as_pandas(inputfile)
         except:
             colvar = pd.read_csv(inputfile, delim_whitespace=True)
-
-        colvar = colvar[angles]
+        finally:
+            colvar = colvar[angles]
         
     else:
         colvar = self.colvar
