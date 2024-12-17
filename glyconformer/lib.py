@@ -34,7 +34,7 @@ def _readinputfile(inputfile, angles, self):
         try:
             colvar = plumed.read_as_pandas(inputfile)
         except:
-            colvar = pd.read_csv(inputfile, delim_whitespace=True)
+            colvar = pd.read_csv(inputfile, sep=' ') 
         finally:
             colvar = colvar[angles]
         
@@ -634,7 +634,7 @@ class Glyconformer():
     def distribution(self,
                      fontsize,
                      colors, 
-                     threshold=2,
+                     threshold,
                      ymax=100, 
                      dpi=300,
                      file=None,
@@ -826,7 +826,7 @@ class Glyconformer():
                        fontsize,
                        color,
                        simulation_length,
-                       window = 5000,
+                       window,
                        ranks = 3,
                        label = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"],
                        linestyle = ["-", "-", "-", "-", "-", "-", "-", "-"],
@@ -976,10 +976,13 @@ class Glyconformer():
     def pca(self,
             fontsize,
             color,
+            ranks,
+            legend,
+            all,
+            biplot,
+            coefficients,
             components = 2,
-            ranks = 3,
             components_plot = [1,2], #only 2D supported #
-            all = True,
             all_color = "gray",
             all_label = "all",
             marker = ".",
@@ -988,13 +991,10 @@ class Glyconformer():
             dpi = 600,
             figsize = [5,5],
             ticks = True,
-            legend = True,
             pick = False,
             datatopick = [0,0],
             colorpick = "darkred",
-            biplot = False,
             biplot_fontsize = 7,
-            coefficients = 3,
             file = None):
         
         
@@ -1068,11 +1068,11 @@ class Glyconformer():
     # @st.cache_data
     def pca_fep(self,
                 fontsize,
+                legend,
                 components = 2,
                 dpi = 600,
                 components_plot = [1,2],
                 figsize = [5,5],
-                legend = True,
                 ticks = True,
                 bins = 50,
                 cmap = "jet",

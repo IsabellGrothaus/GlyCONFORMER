@@ -22,7 +22,12 @@ section:first-child .stSlider > label {
 }
 
 section:last-child .stSlider > label {
-    width: 80px;
+    width: 125px;
+}
+
+section:last-child .stSlider > label > div:last-child {
+    flex: unset;
+    margin-left: 6px;
 }
 
 

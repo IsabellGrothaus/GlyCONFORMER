@@ -55,12 +55,33 @@ def setSessionStates():
     if 'length' not in st.session_state:
         st.session_state['length'] = None
 
+        # -------- Configs --------- #
+
     if 'container_position' not in st.session_state:
         st.session_state['container_position'] = 0
     if 'font_size' not in st.session_state:
         st.session_state['font_size'] = 15
     if 'colors' not in st.session_state:
-        st.session_state['colors'] = {'first_color': '#173c4d', 'second_color': '#146b65', 'third_color': '#4e9973'}
+        st.session_state['colors'] = {'first_color': '#173c4d', 
+                                      'second_color': '#146b65', 
+                                      'third_color': '#4e9973',
+                                      'fourth_color': '#a7c09f',
+                                      'fifth_color': '#dfa790',
+                                      'sixth_color': '#c76156',
+                                      'seventh_color': '#9a2b4c',
+                                      'eighth_color': '#600b4a'}
+
+    if 'threshold' not in st.session_state:
+        st.session_state['threshold'] = 2.0
+    if 'simulation_length' not in st.session_state:
+        st.session_state['simulation_length'] = 500
+    if 'window' not in st.session_state:
+        st.session_state['window'] = 25000
+
+    if 'ranks' not in st.session_state:
+        st.session_state['ranks'] = 3
+    if 'pca_properties' not in st.session_state:
+        st.session_state['pca_properties'] = {'legends': True, 'all': True, 'biplot': False, 'coefficients': 3}
 
 
 setSessionStates()
@@ -167,32 +188,94 @@ def buildHUD():
             st.header(f"Data for: {Glycan.glycantype}")
 
             with st.expander("Configuration", expanded = False):
-                st.session_state['font_size'] = st.select_slider('Font-Size', options = list(range(10, 16)), value = 12)
-                
+
+
+                # -------- Global Configs --------- #
+
+                st.session_state['font_size'] = st.select_slider('Font-Size', options = list(range(10, 16)), value = 12, help = 'Font sizes of the plots may vary')
+
                 st.write("Pick a color:")
-                subcol1, subcol2, subcol3 = st.columns(3, gap = "medium")
+                subcol1, subcol2, subcol3, subcol4, subcol5, subcol6, subcol7, subcol8 = st.columns(8, gap = "medium")
                 with subcol1:
                     st.session_state['colors']['first_color'] = st.color_picker("Pick A Color", "#173c4d", label_visibility = "collapsed")
                 with subcol2:
                     st.session_state['colors']['second_color'] = st.color_picker("Pick A Color", "#146b65", label_visibility = "collapsed")
                 with subcol3:
                     st.session_state['colors']['third_color'] = st.color_picker("Pick A Color", "#4e9973", label_visibility = "collapsed")
+                with subcol4:
+                    st.session_state['colors']['fourth_color'] = st.color_picker("Pick A Color", "#a7c09f", label_visibility = "collapsed")
+                with subcol5:
+                    st.session_state['colors']['fifth_color'] = st.color_picker("Pick A Color", "#dfa790", label_visibility = "collapsed")
+                with subcol6:
+                    st.session_state['colors']['sixth_color'] = st.color_picker("Pick A Color", "#c76156", label_visibility = "collapsed")
+                with subcol7:
+                    st.session_state['colors']['seventh_color'] = st.color_picker("Pick A Color", "#9a2b4c", label_visibility = "collapsed")
+                with subcol8:
+                    st.session_state['colors']['eighth_color'] = st.color_picker("Pick A Color", "#600b4a", label_visibility = "collapsed")
+                
+                st.divider()
+                
+                # -------- Local Configs --------- #
+
+                subtab1, subtab2, subtab3, subtab4 = st.tabs(["pca plot", "fep plot", "distribution plot", "average plot"])
+                with subtab1:
+                    st.session_state['ranks'] = st.select_slider('Ranks', options = list(range(1, 9)), value = 3, help = 'determines how many variants are visible')
+                    
+                    lowsubcol1, lowsubcol2, lowsubcol3, lowsubcol4 = st.columns(4, gap = "medium")
+                    with lowsubcol1:
+                        st.session_state['pca_properties']['legends'] = st.toggle("Legends")
+                    with lowsubcol2:
+                        st.session_state['pca_properties']['all'] = st.toggle("All")
+                    with lowsubcol3:
+                        st.session_state['pca_properties']['biplot'] = st.toggle("Biplot")
+                    with lowsubcol4:
+                        ''' '''
+
+                    st.session_state['pca_properties']['coefficients'] = st.select_slider('Coefficients', options = list(range(1, 7)), value = 3, disabled = not st.session_state['pca_properties']['biplot'], help = 'Biplot needs to be activated')
+
+
+                with subtab2:
+                    st.write("There are currently no configurations available for the fep plots.")
+
+                with subtab3:
+                    st.session_state['threshold'] = st.select_slider('Threshold', options = [x/100 for x in range(1, 1001)], value = 2.0)
+
+                with subtab4:
+                    st.session_state['simulation_length'] = st.select_slider('Length', options = [x*10 for x in range(1, 501)], value = 500)
+                    st.session_state['window'] = int((st.select_slider('Window (%)', options = list(range(5, 26, 5)), value = 10)/100) * Glycan.length)
+
+
+            # -------- PLOTS --------- #
 
             tab1, tab2, tab3, tab4 = st.tabs(["pca", "fep", "distribution", "average"])
 
-            with tab1:   
-                st.pyplot(Glycan.pca(fontsize = st.session_state['font_size'], color = [st.session_state['colors']['first_color'],st.session_state['colors']['second_color'],st.session_state['colors']['third_color'],"#a7c09f","#dfa790","#c76156","#9a2b4c","#600b4a"]))  
-                st.pyplot(Glycan.pca_fep(fontsize = st.session_state['font_size']))
+            with tab1:
+                st.pyplot(Glycan.pca(fontsize = st.session_state['font_size'], 
+                                     color = [value for value in st.session_state['colors'].values()],
+                                     ranks = st.session_state['ranks'],
+                                     legend =  st.session_state['pca_properties']['legends'],
+                                     all =  st.session_state['pca_properties']['all'],
+                                     biplot =  st.session_state['pca_properties']['biplot'],
+                                     coefficients = st.session_state['pca_properties']['coefficients']))                       
+                st.pyplot(Glycan.pca_fep(fontsize = st.session_state['font_size'],
+                                         legend =  st.session_state['pca_properties']['legends']))
 
             with tab2:
                 st.pyplot(Glycan.robust_validate_fep(fontsize = st.session_state['font_size']))
 
             with tab3:
-                st.pyplot(Glycan.distribution(fontsize = st.session_state['font_size'], colors = [st.session_state['colors']['first_color'],st.session_state['colors']['second_color'],st.session_state['colors']['third_color'],"#a7c09f","#dfa790","#c76156","#9a2b4c","#600b4a"]))
+                st.pyplot(Glycan.distribution(fontsize = st.session_state['font_size'],  
+                                              colors = [value for value in st.session_state['colors'].values()],
+                                              threshold = st.session_state['threshold']))
                 
             with tab4:
-                st.pyplot(Glycan.moving_average(simulation_length = 500, window = 12500, fontsize = st.session_state['font_size'], color = [st.session_state['colors']['first_color'],st.session_state['colors']['second_color'],st.session_state['colors']['third_color'],"#a7c09f","#dfa790","#c76156","#9a2b4c","#600b4a"]))
-                st.pyplot(Glycan.cumulative_average(simulation_length = 500, fontsize = st.session_state['font_size'], color = [st.session_state['colors']['first_color'],st.session_state['colors']['second_color'],st.session_state['colors']['third_color'],"#a7c09f","#dfa790","#c76156","#9a2b4c","#600b4a"]))
+                st.pyplot(Glycan.moving_average(simulation_length = st.session_state['simulation_length'],
+                                                window = st.session_state['window'], 
+                                                fontsize = st.session_state['font_size'], 
+                                                color = [value for value in st.session_state['colors'].values()]))               
+                st.pyplot(Glycan.cumulative_average(simulation_length = st.session_state['simulation_length'], 
+                                                    fontsize = st.session_state['font_size'], 
+                                                    color = [value for value in st.session_state['colors'].values()]))
 
 
     else:
