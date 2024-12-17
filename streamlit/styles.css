@@ -141,7 +141,7 @@ div:has(div > div > div.element-container > div.stMarkdown > div > div.headline-
     height: 100%;
 }
 
-.element-container:has(div > div > div.headline-container) + div > div > div > div > div > div:last-child {
+.element-container:has(div > div > div.headline-container) + div > div:first-child > div > div > div > div:last-child {
     position: relative;
     height: 500px;
     overflow-x: hidden;                         /* verhindert das Auftauchen des horizontalen Scrollbalkens*/
@@ -173,7 +173,7 @@ div:has(div > div > div.element-container > div.stMarkdown > div > div.headline-
 .element-container:has(div > div > div.headline-container) + div > div:nth-child(2) > div > div > div > div > .stCheckbox {
     width: unset;
 }
-*/
+
 
 .element-container:has(div > div > div.headline-container) + div:has(div:nth-child(2) > div > div > div > .element-container:nth-child(1) > .stCheckbox > label > input:checked) > div:first-child {
     transform: translateX(0%);
@@ -182,44 +182,36 @@ div:has(div > div > div.element-container > div.stMarkdown > div > div.headline-
 .element-container:has(div > div > div.headline-container) + div:has(div:nth-child(2) > div > div > div > .element-container:nth-child(2) > .stCheckbox > label > input:checked) > div:last-child {
     transform: translateX(0%);
 }
-
+*/
 
 
 
 /* Footer */
 
-.element-container:has(div > div > div.headline-container) + div + div > div > div > div {
+.element-container:has(div > div > div.headline-container) + div > div:last-child > div > div > div > div:last-child {
     gap: 2rem;
 }
 
-.element-container:has(div > div > div.headline-container) + div + div > div > div > div > div {
+.element-container:has(div > div > div.headline-container) + div > div:last-child > div > div > div > div:last-child > div  {
     align-content: center;
 
     width: calc(25% - 1rem);
     flex: 1 1 calc(25% - 1rem);
 }
 
-.element-container:has(div > div > div.headline-container) + div + div > div > div > div > div:first-child {
+.element-container:has(div > div > div.headline-container) + div > div:last-child > div > div > div > div:last-child > div:first-child {
     margin-top: 14px;
     width: calc(13% - 1rem);
     flex: 1 1 calc(13% - 1rem);
 }
 
-.element-container:has(div > div > div.headline-container) + div + div > div > div > div > div:last-child {
+.element-container:has(div > div > div.headline-container) + div > div:last-child > div > div > div > div:last-child > div:last-child {
     margin-top: -15px;
     width: calc(15% - 1rem);
     flex: 1 1 calc(15% - 1rem);
 }
 
-@media (max-width: 640px) {
-    .element-container:has(div > div > div.headline-container) + div {
-        height: 450px;
-    }
 
-    .element-container:has(div > div > div.headline-container) + div + div > div > div > div > div {
-        min-width: calc(50% - 1.5rem);
-    }
-}
 
 /* Content 
 

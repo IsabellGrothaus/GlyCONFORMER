@@ -322,10 +322,9 @@ def buildHUD():
                 st.subheader("Background")
                 st.write(background_text)
 
+                st.divider()
 
-            # -------- Footer --------- #
 
-            with st.container():
                 col1, col2, col3, col4 = st.columns(4)
 
                 with col1:
