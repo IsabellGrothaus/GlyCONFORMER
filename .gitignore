@@ -3,7 +3,9 @@ __pycache__/*
 docs/build
 GlyCONFORMER.egg-info
 dist
-build
+build/lib/glyconformer/__init__.py
+build/lib/glyconformer/lib.py
+build/*
 Compare_M5G0.ipynb
 Compare_M5G0/
 GlyCONFORMER_M5G0.ipynb

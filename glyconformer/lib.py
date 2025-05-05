@@ -17,7 +17,8 @@ import csv
 from sklearn.decomposition import PCA
 from wpca import WPCA, EMPCA
 import warnings
-import os 
+import os
+from scipy.ndimage import gaussian_filter1d 
 
 # Suppress FutureWarning messages
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -281,6 +282,8 @@ class Glyconformer():
             p2 = profile.iloc[profmin[0]:, :]
             p = pd.concat([p2, p1])
             p = p.to_numpy()
+
+            p[:, 1] = gaussian_filter1d(p[:, 1], sigma=1)
 
             maxima = argrelextrema(p[:, 1], np.greater, order=self.order_max)
             minima = argrelextrema(p[:, 1], np.less, order=self.order_min)
@@ -880,23 +883,6 @@ class Glyconformer():
                                        )
             else:
                 pass
-            if file is None:
-                pass
-            else:
-                plt.savefig(file, bbox_inches='tight')
-            if legend == True:
-                ax.legend(fontsize = fontsize)
-            else:
-                pass
-            if pick == True:
-                if biplot == True:
-                    for d in datatopick:
-                        ax.scatter(pca_df_scaled.iloc[d,0], pca_df_scaled.iloc[d,0], c = colorpick, marker = "x", s = 5)
-                else:
-                    for d in datatopick:
-                        ax.scatter(finalDf.iloc[d,components_plot[0]-1], finalDf.iloc[d,components_plot[1]-1], c = colorpick, marker = "x", s = 5)
-            else:
-                pass
             if biplot == True:
                 #plot coefficient
                 distances = []
@@ -918,6 +904,23 @@ class Glyconformer():
                         )
             else:
                 pass
+            if legend == True:
+                ax.legend(fontsize = fontsize)
+            else:
+                pass
+            if pick == True:
+                if biplot == True:
+                    for d in datatopick:
+                        ax.scatter(pca_df_scaled.iloc[d,0], pca_df_scaled.iloc[d,0], c = colorpick, marker = "x", s = 5)
+                else:
+                    for d in datatopick:
+                        ax.scatter(finalDf.iloc[d,components_plot[0]-1], finalDf.iloc[d,components_plot[1]-1], c = colorpick, marker = "x", s = 5)
+            else:
+                pass
+            if file is None:
+                pass
+            else:
+                plt.savefig(file, bbox_inches='tight')
             plt.show()
 
     def pca(self,
@@ -1252,11 +1255,11 @@ class Glycompare:
             conformer = True,
             components_plot = [1,2], #only 2D supported 
             #
-            dataset_label = ["Glycan 1", "Glycan 2", "Glycan 3", "Glycan 4"], 
+            dataset_label = ["Glycan 1", "Glycan 2", "Glycan 3", "Glycan 4", "Glycan 5", "Glycan 6", "Glycan 7", "Glycan 8",], 
             label = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"],
             color = ["#173c4d","#146b65","#4e9973","#a7c09f","#dfa790","#c76156","#9a2b4c","#600b4a"],
-            color_basic = ["gray","gray","gray","gray"],
-            marker = [".","x","v","o"],
+            color_basic = ["gray","gray","gray","gray","gray","gray","gray","gray"],
+            marker = [".","x","v","o","*","s","p","P"],
             fontsize = 7,
             axislim = False,
             dpi = 600,
@@ -1308,6 +1311,26 @@ class Glycompare:
             conformer_pca = pd.concat([self.binary_compressed[0], self.binary_compressed[1], self.binary_compressed[2], self.binary_compressed[3]], axis=0)
             l_start = [0, lengths[0]+1, lengths[0]+lengths[1]+2, lengths[0]+lengths[1]+lengths[2]+3]
             l_end = [lengths[0]+1, lengths[0]+lengths[1]+2, lengths[0]+lengths[1]+lengths[2]+3, lengths[0]+lengths[1]+lengths[2]+lengths[3]+4]
+        elif len(self.inputdir) == 5:
+            colvar_pca = pd.concat([colvars_pca[0], colvars_pca[1], colvars_pca[2], colvars_pca[3], colvars_pca[4]], axis=0)
+            conformer_pca = pd.concat([self.binary_compressed[0], self.binary_compressed[1], self.binary_compressed[2], self.binary_compressed[3], self.binary_compressed[4]], axis=0)
+            l_start = [0, lengths[0]+1, lengths[0]+lengths[1]+2, lengths[0]+lengths[1]+lengths[2]+3, lengths[0]+lengths[1]+lengths[2]+lengths[3]+4]
+            l_end = [lengths[0]+1, lengths[0]+lengths[1]+2, lengths[0]+lengths[1]+lengths[2]+3, lengths[0]+lengths[1]+lengths[2]+lengths[3]+4, lengths[0]+lengths[1]+lengths[2]+lengths[3]+lengths[4]+5]
+        elif len(self.inputdir) == 6:
+            colvar_pca = pd.concat([colvars_pca[0], colvars_pca[1], colvars_pca[2], colvars_pca[3], colvars_pca[4], colvars_pca[5]], axis=0)
+            conformer_pca = pd.concat([self.binary_compressed[0], self.binary_compressed[1], self.binary_compressed[2], self.binary_compressed[3], self.binary_compressed[4], self.binary_compressed[5]], axis=0)
+            l_start = [0, lengths[0]+1, lengths[0]+lengths[1]+2, lengths[0]+lengths[1]+lengths[2]+3, lengths[0]+lengths[1]+lengths[2]+lengths[3]+4, lengths[0]+lengths[1]+lengths[2]+lengths[3]+lengths[4]+5]
+            l_end = [lengths[0]+1, lengths[0]+lengths[1]+2, lengths[0]+lengths[1]+lengths[2]+3, lengths[0]+lengths[1]+lengths[2]+lengths[3]+4, lengths[0]+lengths[1]+lengths[2]+lengths[3]+lengths[4]+5, lengths[0]+lengths[1]+lengths[2]+lengths[3]+lengths[4]+lengths[5]+6]
+        elif len(self.inputdir) == 7:
+            colvar_pca = pd.concat([colvars_pca[0], colvars_pca[1], colvars_pca[2], colvars_pca[3], colvars_pca[4], colvars_pca[5], colvars_pca[6]], axis=0)
+            conformer_pca = pd.concat([self.binary_compressed[0], self.binary_compressed[1], self.binary_compressed[2], self.binary_compressed[3], self.binary_compressed[4], self.binary_compressed[5], self.binary_compressed[6]], axis=0)
+            l_start = [0, lengths[0]+1, lengths[0]+lengths[1]+2, lengths[0]+lengths[1]+lengths[2]+3, lengths[0]+lengths[1]+lengths[2]+lengths[3]+4, lengths[0]+lengths[1]+lengths[2]+lengths[3]+lengths[4]+5, lengths[0]+lengths[1]+lengths[2]+lengths[3]+lengths[4]+lengths[5]+6]
+            l_end = [lengths[0]+1, lengths[0]+lengths[1]+2, lengths[0]+lengths[1]+lengths[2]+3, lengths[0]+lengths[1]+lengths[2]+lengths[3]+4, lengths[0]+lengths[1]+lengths[2]+lengths[3]+lengths[4]+5, lengths[0]+lengths[1]+lengths[2]+lengths[3]+lengths[4]+lengths[5]+6, lengths[0]+lengths[1]+lengths[2]+lengths[3]+lengths[4]+lengths[5]+lengths[6]+7]
+        elif len(self.inputdir) == 8:
+            colvar_pca = pd.concat([colvars_pca[0], colvars_pca[1], colvars_pca[2], colvars_pca[3], colvars_pca[4], colvars_pca[5], colvars_pca[6], colvars_pca[7]], axis=0)
+            conformer_pca = pd.concat([self.binary_compressed[0], self.binary_compressed[1], self.binary_compressed[2], self.binary_compressed[3], self.binary_compressed[4], self.binary_compressed[5], self.binary_compressed[6], self.binary_compressed[7]], axis=0)
+            l_start = [0, lengths[0]+1, lengths[0]+lengths[1]+2, lengths[0]+lengths[1]+lengths[2]+3, lengths[0]+lengths[1]+lengths[2]+lengths[3]+4, lengths[0]+lengths[1]+lengths[2]+lengths[3]+lengths[4]+5, lengths[0]+lengths[1]+lengths[2]+lengths[3]+lengths[4]+lengths[5]+6, lengths[0]+lengths[1]+lengths[2]+lengths[3]+lengths[4]+lengths[5]+lengths[6]+7]
+            l_end = [lengths[0]+1, lengths[0]+lengths[1]+2, lengths[0]+lengths[1]+lengths[2]+3, lengths[0]+lengths[1]+lengths[2]+lengths[3]+4, lengths[0]+lengths[1]+lengths[2]+lengths[3]+lengths[4]+5, lengths[0]+lengths[1]+lengths[2]+lengths[3]+lengths[4]+lengths[5]+6, lengths[0]+lengths[1]+lengths[2]+lengths[3]+lengths[4]+lengths[5]+lengths[6]+7, lengths[0]+lengths[1]+lengths[2]+lengths[3]+lengths[4]+lengths[5]+lengths[6]+lengths[7]+8]
 
         if self.weights == None: 
             # Choose number of principle components
@@ -1326,6 +1349,14 @@ class Glycompare:
                 weights_pca = pd.concat([weights_pca[0], weights_pca[1], weights_pca[2]], axis=0)
             elif len(self.inputdir) == 4:
                 weights_pca = pd.concat([weights_pca[0], weights_pca[1], weights_pca[2], weights_pca[3]], axis=0)
+            elif len(self.inputdir) == 5:
+                weights_pca = pd.concat([weights_pca[0], weights_pca[1], weights_pca[2], weights_pca[3], weights_pca[4]], axis=0)
+            elif len(self.inputdir) == 6:
+                weights_pca = pd.concat([weights_pca[0], weights_pca[1], weights_pca[2], weights_pca[3], weights_pca[4], weights_pca[5]], axis=0)    
+            elif len(self.inputdir) == 7:
+                weights_pca = pd.concat([weights_pca[0], weights_pca[1], weights_pca[2], weights_pca[3], weights_pca[4], weights_pca[5], weights_pca[6]], axis=0)  
+            elif len(self.inputdir) == 8:
+                weights_pca = pd.concat([weights_pca[0], weights_pca[1], weights_pca[2], weights_pca[3], weights_pca[4], weights_pca[5], weights_pca[6], weights_pca[7]], axis=0)     
             # Choose number of principle components
             pca = WPCA(n_components=components)
             # Compute PCA and transform into dataframe with target addition
@@ -1555,7 +1586,27 @@ class Glycompare:
             colvar_pca = pd.concat([colvars_pca[0], colvars_pca[1], colvars_pca[2], colvars_pca[3]], axis=0)
             conformer_pca = pd.concat([self.binary_compressed[0], self.binary_compressed[1], self.binary_compressed[2], self.binary_compressed[3]], axis=0)
             l_start = [0, lengths[0]+1, lengths[0]+lengths[1]+2, lengths[0]+lengths[1]+lengths[2]+3]
-            l_end = [lengths[0]+1, lengths[0]+lengths[1]+2, lengths[0]+lengths[1]+lengths[2]+3, lengths[0]+lengths[1]+lengths[2]+lengths[3]+4]    
+            l_end = [lengths[0]+1, lengths[0]+lengths[1]+2, lengths[0]+lengths[1]+lengths[2]+3, lengths[0]+lengths[1]+lengths[2]+lengths[3]+4]        
+        elif len(self.inputdir) == 5:
+            colvar_pca = pd.concat([colvars_pca[0], colvars_pca[1], colvars_pca[2], colvars_pca[3], colvars_pca[4]], axis=0)
+            conformer_pca = pd.concat([self.binary_compressed[0], self.binary_compressed[1], self.binary_compressed[2], self.binary_compressed[3], self.binary_compressed[4]], axis=0)
+            l_start = [0, lengths[0]+1, lengths[0]+lengths[1]+2, lengths[0]+lengths[1]+lengths[2]+3, lengths[0]+lengths[1]+lengths[2]+lengths[3]+4]
+            l_end = [lengths[0]+1, lengths[0]+lengths[1]+2, lengths[0]+lengths[1]+lengths[2]+3, lengths[0]+lengths[1]+lengths[2]+lengths[3]+4, lengths[0]+lengths[1]+lengths[2]+lengths[3]+lengths[4]+5]
+        elif len(self.inputdir) == 6:
+            colvar_pca = pd.concat([colvars_pca[0], colvars_pca[1], colvars_pca[2], colvars_pca[3], colvars_pca[4], colvars_pca[5]], axis=0)
+            conformer_pca = pd.concat([self.binary_compressed[0], self.binary_compressed[1], self.binary_compressed[2], self.binary_compressed[3], self.binary_compressed[4], self.binary_compressed[5]], axis=0)
+            l_start = [0, lengths[0]+1, lengths[0]+lengths[1]+2, lengths[0]+lengths[1]+lengths[2]+3, lengths[0]+lengths[1]+lengths[2]+lengths[3]+4, lengths[0]+lengths[1]+lengths[2]+lengths[3]+lengths[4]+5]
+            l_end = [lengths[0]+1, lengths[0]+lengths[1]+2, lengths[0]+lengths[1]+lengths[2]+3, lengths[0]+lengths[1]+lengths[2]+lengths[3]+4, lengths[0]+lengths[1]+lengths[2]+lengths[3]+lengths[4]+5, lengths[0]+lengths[1]+lengths[2]+lengths[3]+lengths[4]+lengths[5]+6]
+        elif len(self.inputdir) == 7:
+            colvar_pca = pd.concat([colvars_pca[0], colvars_pca[1], colvars_pca[2], colvars_pca[3], colvars_pca[4], colvars_pca[5], colvars_pca[6]], axis=0)
+            conformer_pca = pd.concat([self.binary_compressed[0], self.binary_compressed[1], self.binary_compressed[2], self.binary_compressed[3], self.binary_compressed[4], self.binary_compressed[5], self.binary_compressed[6]], axis=0)
+            l_start = [0, lengths[0]+1, lengths[0]+lengths[1]+2, lengths[0]+lengths[1]+lengths[2]+3, lengths[0]+lengths[1]+lengths[2]+lengths[3]+4, lengths[0]+lengths[1]+lengths[2]+lengths[3]+lengths[4]+5, lengths[0]+lengths[1]+lengths[2]+lengths[3]+lengths[4]+lengths[5]+6]
+            l_end = [lengths[0]+1, lengths[0]+lengths[1]+2, lengths[0]+lengths[1]+lengths[2]+3, lengths[0]+lengths[1]+lengths[2]+lengths[3]+4, lengths[0]+lengths[1]+lengths[2]+lengths[3]+lengths[4]+5, lengths[0]+lengths[1]+lengths[2]+lengths[3]+lengths[4]+lengths[5]+6, lengths[0]+lengths[1]+lengths[2]+lengths[3]+lengths[4]+lengths[5]+lengths[6]+7]
+        elif len(self.inputdir) == 8:
+            colvar_pca = pd.concat([colvars_pca[0], colvars_pca[1], colvars_pca[2], colvars_pca[3], colvars_pca[4], colvars_pca[5], colvars_pca[6], colvars_pca[7]], axis=0)
+            conformer_pca = pd.concat([self.binary_compressed[0], self.binary_compressed[1], self.binary_compressed[2], self.binary_compressed[3], self.binary_compressed[4], self.binary_compressed[5], self.binary_compressed[6], self.binary_compressed[7]], axis=0)
+            l_start = [0, lengths[0]+1, lengths[0]+lengths[1]+2, lengths[0]+lengths[1]+lengths[2]+3, lengths[0]+lengths[1]+lengths[2]+lengths[3]+4, lengths[0]+lengths[1]+lengths[2]+lengths[3]+lengths[4]+5, lengths[0]+lengths[1]+lengths[2]+lengths[3]+lengths[4]+lengths[5]+6, lengths[0]+lengths[1]+lengths[2]+lengths[3]+lengths[4]+lengths[5]+lengths[6]+7]
+            l_end = [lengths[0]+1, lengths[0]+lengths[1]+2, lengths[0]+lengths[1]+lengths[2]+3, lengths[0]+lengths[1]+lengths[2]+lengths[3]+4, lengths[0]+lengths[1]+lengths[2]+lengths[3]+lengths[4]+5, lengths[0]+lengths[1]+lengths[2]+lengths[3]+lengths[4]+lengths[5]+6, lengths[0]+lengths[1]+lengths[2]+lengths[3]+lengths[4]+lengths[5]+lengths[6]+7, lengths[0]+lengths[1]+lengths[2]+lengths[3]+lengths[4]+lengths[5]+lengths[6]+lengths[7]+8]    
 
         if self.weights == None: 
             # Choose number of principle components
@@ -1574,6 +1625,14 @@ class Glycompare:
                 weights_pca = pd.concat([weights_pca[0], weights_pca[1], weights_pca[2]], axis=0)
             elif len(self.inputdir) == 4:
                 weights_pca = pd.concat([weights_pca[0], weights_pca[1], weights_pca[2], weights_pca[3]], axis=0)
+            elif len(self.inputdir) == 5:
+                weights_pca = pd.concat([weights_pca[0], weights_pca[1], weights_pca[2], weights_pca[3], weights_pca[4]], axis=0)
+            elif len(self.inputdir) == 6:
+                weights_pca = pd.concat([weights_pca[0], weights_pca[1], weights_pca[2], weights_pca[3], weights_pca[4], weights_pca[5]], axis=0)    
+            elif len(self.inputdir) == 7:
+                weights_pca = pd.concat([weights_pca[0], weights_pca[1], weights_pca[2], weights_pca[3], weights_pca[4], weights_pca[5], weights_pca[6]], axis=0)  
+            elif len(self.inputdir) == 8:
+                weights_pca = pd.concat([weights_pca[0], weights_pca[1], weights_pca[2], weights_pca[3], weights_pca[4], weights_pca[5], weights_pca[6], weights_pca[7]], axis=0) 
             # Choose number of principle components
             pca = WPCA(n_components=components)
             # Compute PCA and transform into dataframe with target addition
