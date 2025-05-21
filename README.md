@@ -10,7 +10,10 @@ Check the paper or tutorial for a detailed explanation of the GlyCONFORMER strin
 
 ## Installation
 
-GlyCONFORMER is available via pip:
+GlyCONFORMER is available via pip and docker:
+
+## pip
+
 ```
 pip install GlyCONFORMER
 ```
@@ -25,9 +28,19 @@ conda activate name
 pip install GlyCONFORMER
 ``` 
 
-## Tutorial
+## Docker Image
 
-The tutorial juypter notebook should be run from within the GlyCONFORMER package folder or you have to change the path directing to the TUTORIAL folder.
+This image includes:
+- GlyCONFORMER pre-installed via `pip install .`
+- Jupyter Notebook launched on container start
+- Required dependencies like `plumed`, `numpy`, `scikit-learn`, etc.
+
+```bash
+docker pull grothaus/glyconformer:latest
+
+docker run -p 8888:8888 grothaus/glyconformer:latest
+
+## Tutorial
 
 The tutorial includes different N-glycan types and different complexity levels of how to obtain a GlyCONFORMER label string for custom glycan types and their recorded torsion angle values. The minimum example is given by the high-mannose type N-glycan M5, where only the file **M5_angles.dat** with torsion angle values is used as input:
 
