@@ -38,25 +38,24 @@ def _readinputfile(inputfile, angles):
     return colvar
 
 def _readfeature(path, file):
-        """
-        Function reading a list from file.
+    """
+    Function reading a list from file.
+    Parameters
+    ----------
+    path, file : str
+        Name of the path + file to read in,
+        including file extension 
+    Returns
+    -------
+    list
+        Variable holding the list of strings
+    """
+    
+    full_path = os.path.join(path, file)
+    with open(full_path, 'r', encoding='utf-8') as f:
+        feature = f.read().split()
 
-        Parameters
-        ----------
-        path, file : str
-            Name of the path + file to read in,
-            including file extension 
-
-        Returns
-        -------
-        list
-            Variable holding the list of strings
-        """
-
-        feature = importlib.resources.read_text(path, file)
-        feature = feature.split()
-
-        return feature
+    return feature
 
 def _readdict(path, file):
         """
@@ -74,7 +73,8 @@ def _readdict(path, file):
             Variable holding the dictionary
         """
     
-        with importlib.resources.open_text(path, file) as f:
+        full_path = os.path.join(path, file)
+        with open(full_path, 'r', encoding='utf-8') as f:
             data = f.read()
         dict = json.loads(data)
     
@@ -98,7 +98,8 @@ def _readseparator(path, file):
 
         index = []
         sep = []
-        with importlib.resources.open_text(path, file) as f:
+        full_path = os.path.join(path, file)
+        with open(full_path, 'r', encoding='utf-8') as f:
             reader = csv.reader(f, delimiter=' ')
             for row in reader:
                 index.append(int(row[0]))
@@ -214,21 +215,41 @@ class Glyconformer():
             self.separator_index = separator_index
             self.separator = separator
             self.fepdir = fepdir
-            self.order_max = order_max
-            self.order_min = order_min
-            self.maxima, self.minima = self._find_min_max() 
+            if order_max is None:
+                self.maxima, self.minima = self._robust_find_maxima_minima()
+            if order_min is None:
+                self.maxima, self.minima = self._robust_find_maxima_minima()
+            else:
+                self.order_max = order_max
+                self.order_min = order_min
+                self.maxima, self.minima = self._find_min_max()
             self.weights = weights
         else:
             self.glycantype = glycantype
-            self.inputfile = "TUTORIAL/{}_example/{}_angles.dat".format(self.glycantype,self.glycantype)
+            root_dir = "LIBRARY_GLYCANS"
 
-            self.angles = _readfeature("LIBRARY_GLYCANS.{}".format(self.glycantype), "angles.dat")
-            self.omega_angles = _readfeature("LIBRARY_GLYCANS.{}".format(self.glycantype), "omega_angles.dat")
-            self.separator_index, self.separator = _readseparator("LIBRARY_GLYCANS.{}".format(self.glycantype), "separator.dat")
-            self.fepdir = "LIBRARY_GLYCANS/{}".format(self.glycantype)
-            self.minima = _readdict("LIBRARY_GLYCANS.{}".format(self.glycantype), "minima.dat")
-            self.maxima = _readdict("LIBRARY_GLYCANS.{}".format(self.glycantype), "maxima.dat")
-            self.weights = None
+            for type in ["N-glycans", "O-glycans"]:
+                glycan_path = os.path.join(root_dir, type)
+
+                if not os.path.isdir(glycan_path):
+                    continue  # Skip if directory doesn't exist
+
+                # Loop through subdirectories of N-/O-glycans
+                for subdir in os.listdir(glycan_path):
+                    subdir_path = os.path.join(glycan_path, subdir)
+                    if not os.path.isdir(subdir_path):
+                        continue
+                    
+                    # Now check if the target subsubdir exists
+                    target_path = os.path.join(subdir_path, self.glycantype)
+                    if os.path.isdir(target_path):
+                        self.inputfile = "{}/colvar.dat".format(target_path)
+                        self.angles = _readfeature(target_path, "angles.dat")
+                        self.omega_angles = _readfeature(target_path, "omega_angles.dat")
+                        self.separator_index, self.separator = _readseparator(target_path, "separator.dat")
+                        self.fepdir = target_path
+                        self.maxima, self.minima = self._robust_find_maxima_minima()
+                        self.weights = None
 
         self.label = self._label_min()
         # read inputfile
@@ -337,6 +358,29 @@ class Glyconformer():
                 raise ValueError('More than 3 minima detected')
 
         return maxima_dict, minima_dict
+    
+    def _robust_find_maxima_minima(self):
+        """
+        Finds maxima and minima in profiles, handling potential errors gracefully.
+        Iteratively adjusts `self.order_max` and `self.order_min` if errors occur,
+        starting from 8 and decreasing to 2.
+        Returns:
+            tuple: A tuple containing the maxima and minima dictionaries.
+        """
+        self.order_max = 5
+        self.order_min = 5
+        for order_max in range(10, 0, -1):
+            for order_min in range(10, 0, -1):
+                try:
+                    maxima_dict, minima_dict = self._find_min_max()
+                    return maxima_dict, minima_dict
+                except IndexError as e:
+                    self.order_max = order_max
+                    self.order_min = order_min
+                    continue  # Try the next combination of orders
+        # If no combination of orders works, raise a final error
+        raise IndexError("Could not find suitable maxima and minima for any order combination.")
+
 
     def _label_min(self):
         """
