@@ -36,3 +36,20 @@ jobs:
           tags: |
             ${{ vars.DOCKER_USERNAME }}/${{ env.REPO_LOWER }}:latest
             ${{ vars.DOCKER_USERNAME }}/${{ env.REPO_LOWER }}:${{ github.sha }}
+
+      - name: 📤 Update Docker Hub Description
+        env:
+          DOCKERHUB_USERNAME: ${{ vars.DOCKER_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          REPO: ${{ env.REPO_LOWER }}
+        run: |
+          DESCRIPTION=$(cat README.md | sed 's/"/\\"/g' | awk '{printf "%s\\n", $0}')
+          
+          TOKEN=$(curl -s -H "Content-Type: application/json" -X POST -d \
+            "{\"username\": \"${DOCKERHUB_USERNAME}\", \"password\": \"${DOCKERHUB_TOKEN}\"}" \
+            https://hub.docker.com/v2/users/login/ | jq -r .token)
+
+          curl -s -X PATCH https://hub.docker.com/v2/repositories/${DOCKERHUB_USERNAME}/${REPO}/ \
+            -H "Authorization: JWT ${TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "{\"full_description\": \"$DESCRIPTION\"}"
