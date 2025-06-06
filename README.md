@@ -23,7 +23,7 @@ Pandas<=1.3.5 is required!
 Recommendation - build via conda environment with following commands:
 
 ```
-conda install -n name python=3.10 --no-default-packages
+conda create -n name python=3.10 --no-default-packages
 conda activate name
 pip install GlyCONFORMER
 ``` 
@@ -43,34 +43,41 @@ docker run -p 8888:8888 grothaus/glyconformer:latest
 
 ## Tutorial
 
-The tutorial includes different N-glycan types and different complexity levels of how to obtain a GlyCONFORMER label string for custom glycan types and their recorded torsion angle values. The minimum example is given by the high-mannose type N-glycan M5, where only the file **M5_angles.dat** with torsion angle values is used as input:
+The tutorial includes different N-glycan types and different complexity levels of how to obtain a GlyCONFORMER label string for custom glycan types and their recorded torsion angle values. The minimum example is given by the high-mannose type N-glycan M5, where all necessary information are read from the LIBRARY_GLYCANS folder by specifying the **glycantype = "Man5**":
+
+```
+M5 = Glyconformer(glycantype = "Man5")
+```
+Raw torsion angle values get converted to letters corresponding to their values and associate them to a certain minima of the free energy profile along that torsion angle. 
+
+The raw input data can be accessed via:
+
+```
+M5.colvar
+```
 
 ![](https://github.com/IsabellGrothaus/GlyCONFORMER/blob/v1.0.0-alpha/TUTORIAL/Input.png?raw=true)
 
-It is used by the glyconformer package, whereas remaining necessary information are read from the LIBRARY_GLYCANS folder by specifying the **glycantype = "M5**": 
+and its translated variant via:
 
 ```
-conformer = glyconformer(inputfile = "TUTORIAL/M5_example/M5_angles.dat", glycantype = "M5")
+M5.binary
 ```
-
-When executing the run command:
-
-```
-binary, population = conformer.run()
-```
-
-a **binary** dataframe is produced, where the torsion angles have been converted to letters corresponding to their values and associate them to a certain minima of the free energy profile along that torsion angle. 
 
 ![](https://github.com/IsabellGrothaus/GlyCONFORMER/blob/v1.0.0-alpha/TUTORIAL/Output.png?raw=true)
 
-Additionally, the occurance of each conformer string is counted and outputted to the **population** dataframe:
+Additionally, the occurance of each conformer string is counted and outputted via:
+
+```
+M5.count
+```
 
 ![](https://github.com/IsabellGrothaus/GlyCONFORMER/blob/v1.0.0-alpha/TUTORIAL/Count.png?raw=true)
 
-The obtained information can also be used to plot a histogram, displaying the conformer distribution by:
+All this is performed in the background and final results can be outputted using various plotting functions, e.g.:
 
 ``` 
-conformer.plot()
+M5.distribution
 ```
 
 Conformer labels are given on the x-axis and deviations from the most populated conformer indicated by explicit letters, where dots are used when no change in that torsion angle could be detected. 
