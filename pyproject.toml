@@ -24,8 +24,8 @@ dependencies = [
     "pandas<=1.3.5",
     "plumed",
     "scipy",
-    "wpca",
-    "scikit-learn"
+    "scikit-learn",
+    "wpca"
 ]
 
 [project.urls]
